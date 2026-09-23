@@ -1,0 +1,39 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: preview
+      args:
+        VITE_ASSISTANT_API_URL: ${VITE_ASSISTANT_API_URL:-http://localhost:8000}
+        VITE_CERTIFICATE_ORIGINS: ${VITE_CERTIFICATE_ORIGINS:-}
+    ports:
+      - '127.0.0.1:5173:4173'
+    init: true
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:4173').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+  frontend-test:
+    profiles: ['test']
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    init: true
+  frontend-e2e:
+    profiles: ['test']
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: e2e
+    init: true
+    shm_size: '1gb'

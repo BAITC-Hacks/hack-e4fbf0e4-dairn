@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# Override the repository-level harness source exclusion.
+!src/
+!src/**
+
+.env
+.env.*
+!.env.example

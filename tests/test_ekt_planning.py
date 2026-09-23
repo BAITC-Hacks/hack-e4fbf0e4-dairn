@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def prepare(tmp_path):
-    for filename in ('hackathon-task.json', 'planning/ekt-plan.json', 'contracts/catalog.openapi.json', 'contracts/assistant.openapi.json', 'docker-compose.yml'):
+    for filename in ('hackathon-task.json', 'planning/ekt-plan.json', 'planning/ekt-runtime.json', 'contracts/catalog.openapi.json', 'contracts/assistant.openapi.json', 'docker-compose.yml'):
         target = tmp_path / filename
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / filename, target)
@@ -28,13 +28,18 @@ def test_explicit_plan_overrides_tooling_and_generation_is_idempotent(tmp_path):
         args.contract_action = 'generate'
         assert command_contract(args) == 0
     plan = json.loads((tmp_path / '.harness/tasks.json').read_text())
-    assert len(plan['tasks']) == 11
+    assert len(plan['tasks']) == len(json.loads((ROOT / 'planning/ekt-plan.json').read_text())['tasks'])
     assert all(t['id'].startswith('EKT-') for t in plan['tasks'])
     assert {s['id'] for s in plan['services']['services']} == {'catalog-service', 'assistant-service'}
     contracts = ContractRegistry(tmp_path).list()
     assert {c['id'] for c in contracts} == {'CATALOG-API', 'ASSISTANT-API'}
     assert all(c['schema']['paths'] for c in contracts)
-    assert all(t['status'] == 'blocked' for t in plan['tasks'] if t.get('contract_dependencies'))
+    assert all(t['contract_gate']['status'] == 'pending_review' for t in plan['tasks'] if t.get('contract_dependencies'))
+    assert next(t for t in plan['tasks'] if t['id']=='EKT-05')['status']=='in_progress'
+    assert next(t for t in plan['tasks'] if t['id']=='EKT-12')['status']=='complete'
+    repository=json.loads((tmp_path / '.harness/repository.json').read_text())
+    assert repository['docker']['compose_files']==['assistant-service/compose.yaml']
+    assert all(s['execution_mode']=='host' for s in repository['verification_strategy'])
 
 
 def test_edited_contract_reopens_review_and_preserves_approved_baseline(tmp_path):
@@ -63,3 +68,21 @@ def test_invalid_explicit_plan_does_not_replace_current_tasks(tmp_path):
     path.write_text(json.dumps(plan))
     assert command_plan(args) == 2
     assert (tmp_path / '.harness/tasks.json').read_text() == previous
+
+
+def test_contract_gates_preserve_progress_and_external_blockers():
+    from harness.cli import _refresh_task_contract_status
+    plan={'tasks':[
+        {'id':'done','status':'complete','contract_dependencies':['API']},
+        {'id':'active','status':'in_progress','contract_dependencies':['API']},
+        {'id':'new','status':'planned','contract_dependencies':['API']},
+        {'id':'external','status':'blocked','blocked_reason':'Waiting for partner','contract_dependencies':['API']}
+    ]}
+    _refresh_task_contract_status(plan,[{'id':'API','status':'draft'}])
+    assert [t['status'] for t in plan['tasks'][:3]]==['complete','in_progress','blocked']
+    assert plan['tasks'][0]['contract_gate']['unapproved']==['API']
+    # Preserve a real external blocker both before and after approval.
+    assert plan['tasks'][3]['blocked_reason']=='Waiting for partner'
+    _refresh_task_contract_status(plan,[{'id':'API','status':'approved'}])
+    assert plan['tasks'][2]['status']=='planned'
+    assert plan['tasks'][3]['status']=='blocked'

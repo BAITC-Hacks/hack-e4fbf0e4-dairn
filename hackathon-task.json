@@ -384,5 +384,30 @@
     "contract_behavior": "Plan loads schemas from contract files; generation reuses registered provider-consumer boundaries; schema edits return contracts to review.",
     "architecture": "Two backend services: catalog-service and assistant-service; chat-widget is a client. Harness Compose is tooling only."
   },
-  "planning_file": "planning/ekt-plan.json"
+  "planning_file": "planning/ekt-plan.json",
+  "execution": {
+    "docker_manifest": "planning/ekt-runtime.json",
+    "verification_strategy": [
+      {
+        "command": ".venv/bin/python -m pytest -q tests",
+        "execution_mode": "host",
+        "scope": "harness"
+      },
+      {
+        "command": ".venv/bin/python -m pytest -q -c assistant-service/pyproject.toml assistant-service/tests",
+        "execution_mode": "host",
+        "scope": "assistant-service"
+      }
+    ]
+  },
+  "implementation": {
+    "assistant_directory": "assistant-service/",
+    "frontend_directory": "frontend-service/",
+    "frontend_status": "source_present_unverified",
+    "catalog_status": "provider_not_implemented",
+    "rag": "deferred; KnowledgeProvider extension point",
+    "endpoint_inventory": "planning/endpoint-status.json",
+    "frontend_guide": "assistant-service/FRONTEND_AGENT.md",
+    "postman_collection": "assistant-service/postman/EKT-Assistant.postman_collection.json"
+  }
 }
