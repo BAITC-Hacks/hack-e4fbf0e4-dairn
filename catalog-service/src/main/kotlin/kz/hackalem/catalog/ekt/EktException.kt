@@ -10,5 +10,5 @@ sealed class EktException(message: String) : RuntimeException(message) {
     class Unavailable : EktException("EKT API is unavailable")
     class Timeout : EktException("EKT request timed out")
     class Interrupted : EktException("EKT request was interrupted")
-    class InvalidResponse : EktException("EKT returned an invalid or oversized JSON response")
+    class InvalidResponse(val status: Int? = null) : EktException("EKT returned an invalid or oversized JSON response")
 }
