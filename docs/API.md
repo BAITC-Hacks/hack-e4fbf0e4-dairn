@@ -1,7 +1,7 @@
 # Catalog API
 
 Единый публичный контракт Issues #3 и #4. Наблюдаемая исходная схема и происхождение
-образца: [EKT_DATA.md](EKT_DATA.md). Исследование: [api-findings.md](../catalog-service/docs/api-findings.md).
+образца: [EKT_DATA.md](EKT_DATA.md). Исследование: [api-findings.md](../ekt-catalog-service/docs/api-findings.md).
 
 Дополнительный сценарий разбора пользовательского текста и предложения кандидатов:
 `POST /api/catalog/assist/search`, [контракт и запуск](AI_SEARCH.md). Он не изменяет каталог
@@ -20,8 +20,8 @@
 
 ```sh
 CATALOG_SOURCE=snapshot \
-CATALOG_SNAPSHOT_PATH=catalog-service/local-evidence/products-page-1.json \
-gradle :catalog-service:runServer
+CATALOG_SNAPSHOT_PATH=local-evidence/products-page-1.json \
+gradle  -p ekt-catalog-service runServer
 ```
 
 В другом терминале:

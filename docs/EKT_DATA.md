@@ -4,14 +4,14 @@
 
 Документ описывает **наблюдаемую структуру одного сохранённого ответа списка товаров**, а не гарантированную схему всего API EKT и не публичный Product-контракт приложения.
 
-- Образец: `catalog-service/local-evidence/products-page-1.json` (локальный файл, игнорируется Git).
+- Образец: `ekt-catalog-service/local-evidence/products-page-1.json` (локальный файл, игнорируется Git).
 - Дата анализа: 2026-09-23. Время получения ответа в файле не записано.
 - Размер выборки: 20 товаров, 20 уникальных ID.
 - SHA-256 образца: `02818ee6061019012c42ef6e355835ff890b0675e4b7b1d7b458e657c42a1a54`.
 - По назначению CLI и имени файла образец соответствует `GET https://ekt.kz/api/products?page=1`; внутри JSON указано `page: 1`.
 - HTTP status, заголовки, использованные credentials и факт выполнения Basic Auth по одному JSON-файлу не устанавливаются. Авторизованный запрос в текущем процессе не повторялся.
 
-Подключение и остальные проверки принадлежат [Issue #2](https://github.com/BAITC-Hacks/hack-e4fbf0e4-dairn/issues/2). Общий журнал исследования: [api-findings.md](../catalog-service/docs/api-findings.md). Публичный API приложения описан отдельно в [API.md](API.md).
+Подключение и остальные проверки принадлежат [Issue #2](https://github.com/BAITC-Hacks/hack-e4fbf0e4-dairn/issues/2). Общий журнал исследования: [api-findings.md](../ekt-catalog-service/docs/api-findings.md). Публичный API приложения описан отдельно в [API.md](API.md).
 
 ## Обёртка списка
 
@@ -98,9 +98,9 @@
 Команды из корня проекта после сборки дистрибутива:
 
 ```sh
-bash catalog-service/bin/ekt-cli list --page 2 --output catalog-service/local-evidence/products-page-2.json
-bash catalog-service/bin/ekt-cli detail --id 45357 --output catalog-service/local-evidence/product-45357.json
-bash catalog-service/bin/ekt-cli detail --id 25397 --output catalog-service/local-evidence/product-25397.json
+bash ekt-catalog-service/bin/ekt-cli list --page 2 --output ekt-catalog-service/local-evidence/products-page-2.json
+bash ekt-catalog-service/bin/ekt-cli detail --id 45357 --output ekt-catalog-service/local-evidence/product-45357.json
+bash ekt-catalog-service/bin/ekt-cli detail --id 25397 --output ekt-catalog-service/local-evidence/product-25397.json
 ```
 
 Логин и скрытый пароль запрашиваются локально. Credentials, Authorization и их Base64-представление не включаются в документацию. Raw-файлы остаются в игнорируемом каталоге; перед публикацией новых примеров необходимо проверить их содержимое.

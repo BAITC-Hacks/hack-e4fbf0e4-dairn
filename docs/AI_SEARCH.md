@@ -47,8 +47,8 @@ read -r -p 'OpenAI model supporting Structured Outputs: ' OPENAI_MODEL
 export OPENAI_API_KEY OPENAI_MODEL
 export OPENAI_SEARCH_ENABLED=true
 export CATALOG_SOURCE=snapshot
-export CATALOG_SNAPSHOT_PATH=catalog-service/local-evidence/products-page-1.json
-gradle :catalog-service:runServer
+export CATALOG_SNAPSHOT_PATH=local-evidence/products-page-1.json
+gradle  -p ekt-catalog-service runServer
 ```
 
 Для EKT live вместо snapshot задайте `CATALOG_SOURCE=live` и переменные EKT согласно README.
