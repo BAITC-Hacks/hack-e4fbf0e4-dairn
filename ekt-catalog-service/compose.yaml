@@ -1,0 +1,23 @@
+services:
+  ekt-catalog-service:
+    image: ekt-service-catalog:${IMAGE_TAG:-latest}
+    build: .
+    env_file: .env
+    environment:
+      CATALOG_HOST: 0.0.0.0
+      PORT: ${PORT:-8080}
+    ports:
+      - "${CATALOG_BIND_ADDRESS:-127.0.0.1}:${PORT:-8080}:${PORT:-8080}"
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

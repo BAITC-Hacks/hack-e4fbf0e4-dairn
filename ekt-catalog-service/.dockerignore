@@ -1,0 +1,11 @@
+.git
+**/.gradle
+**/.kotlin
+**/.idea
+**/.env
+**/.env.*
+**/build
+.agents
+.codex
+local-evidence
+docs

@@ -1,0 +1,8 @@
+.idea/
+.gradle/
+.kotlin/
+**/build/
+.env
+.env.*
+!.env.example
+ekt-catalog-service/local-evidence/
