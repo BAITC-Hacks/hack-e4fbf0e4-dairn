@@ -15,7 +15,7 @@ COPY index.html tsconfig.json vite.config.ts playwright.config.ts eslint.config.
 COPY src ./src
 COPY test ./test
 COPY e2e ./e2e
-COPY README.md react-standards.md .gitignore docker-compose.yml ./
+COPY react-standards.md .gitignore docker-compose.yml ./
 
 FROM source AS test
 CMD ["npm", "run", "check"]

@@ -32,7 +32,7 @@ async def catalog(handler):
 
 
 @pytest.mark.asyncio
-async def test_recent_live_search_and_detail_accept_unknown_sku_and_facts():
+async def test_recent_live_search_and_detail_keep_unknown_sku_and_stable_simulation():
     data = live_response()
     data['items'][0]['sku'] = None
 
@@ -46,13 +46,75 @@ async def test_recent_live_search_and_detail_accept_unknown_sku_and_facts():
         products = await client.search('кабель')
         assert isinstance(products, list) and isinstance(products, CatalogResults)
         assert products.metadata == data['metadata']
-        for product in (products[0], await client.detail(data['items'][0]['id'])):
+        detail = await client.detail(data['items'][0]['id'])
+        repeated = (await client.search('кабель'))[0]
+        for product in (products[0], detail, repeated):
             assert product['sku'] is None
             assert not product['stale']
-            assert product['price']['currency'] is None
-            assert product['availability'] == {'status': 'UNKNOWN', 'quantity': None}
+            assert product['price'] == {'amount': data['items'][0]['price']['amount'], 'currency': 'KZT'}
+            assert product['availability']['status'] == 'IN_STOCK'
+            assert isinstance(product['availability']['quantity'], int)
+            assert 1 <= product['availability']['quantity'] <= 100
+            assert product['availability']['simulated'] is True
+            assert product['availability']['source'] == 'assistant_simulation'
             assert product['stock'] == []
             assert product['catalog_metadata']['coverage'] == 'PARTIAL'
+        assert products[0]['availability'] == detail['availability'] == repeated['availability']
+    finally:
+        await client.close()
+    # A fresh adapter must not invent a different stock figure for the same ID.
+    restarted = await catalog(handler)
+    try:
+        assert (await restarted.detail(data['items'][0]['id']))['availability'] == detail['availability']
+    finally:
+        await restarted.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('quantity,status', [(0, 'OUT_OF_STOCK'), ('0', 'OUT_OF_STOCK'), (7, 'IN_STOCK'), ('12.50', 'LIMITED')])
+async def test_catalog_quantity_and_status_are_preserved_without_simulation(quantity, status):
+    data = live_response()
+    supplied = data['items'][0]
+    supplied['availability'] = {'status': status, 'quantity': quantity}
+    supplied['price'] = {'amount': '0012.500', 'currency': None}
+    client = await catalog(lambda _: httpx.Response(200, json={'product': supplied, 'metadata': data['metadata']}))
+    try:
+        product = await client.detail(supplied['id'])
+        assert product['availability'] == {'status': status, 'quantity': quantity, 'simulated': False, 'source': 'catalog'}
+        assert product['price'] == {'amount': '0012.500', 'currency': 'KZT'}
+        assert product['stock'] == []
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('availability', [{'status': 'UNKNOWN'}, {'status': 'UNKNOWN', 'quantity': None}])
+async def test_missing_or_null_quantity_gets_explicitly_simulated_stock(availability):
+    data = live_response()
+    supplied = data['items'][0]
+    supplied['availability'] = availability
+    client = await catalog(lambda _: httpx.Response(200, json={'product': supplied, 'metadata': data['metadata']}))
+    try:
+        product = await client.detail(supplied['id'])
+        assert product['availability']['status'] == 'IN_STOCK'
+        assert 1 <= product['availability']['quantity'] <= 100
+        assert product['availability']['simulated'] is True
+        assert product['availability']['source'] == 'assistant_simulation'
+        assert product['stock'] == []
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_explicit_out_of_stock_without_quantity_is_not_made_purchasable():
+    data = live_response()
+    supplied = data['items'][0]
+    supplied['availability'] = {'status': 'OUT_OF_STOCK', 'quantity': None}
+    client = await catalog(lambda _: httpx.Response(200, json={'product': supplied, 'metadata': data['metadata']}))
+    try:
+        product = await client.detail(supplied['id'])
+        assert product['availability'] == {'status': 'OUT_OF_STOCK', 'quantity': None, 'simulated': False, 'source': 'catalog'}
+        assert product['stock'] == []
     finally:
         await client.close()
 

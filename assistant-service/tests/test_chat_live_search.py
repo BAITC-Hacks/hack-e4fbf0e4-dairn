@@ -39,7 +39,14 @@ async def test_natural_message_retrieves_sku_and_empty_search_keeps_metadata(tmp
                 assert done['status']=='completed'
                 assert [p['id'] for p in done['products']]==expected
                 assert any(source['metadata']['coverage']=='PARTIAL' for source in done['sources'])
-                assert any('часть каталога' in w for w in done['warnings'])
+                assert 'Доступна только часть каталога; отсутствие результата не означает отсутствие товара.' not in done['warnings']
+                assert 'Доступны данные списка; наличие и валюта цены не подтверждены.' not in done['warnings']
+                assert any('Актуальность цены и наличия' in w for w in done['warnings'])
+                if expected:
+                    product = done['products'][0]
+                    assert product['price'] == {'amount': '1810', 'currency': 'KZT'}
+                    assert product['availability']['simulated'] is True
+                    assert f"{product['availability']['quantity']} (демо)" in done['answer']
                 if not expected:
                     assert 'полном каталоге' in done['answer']
     assert calls==['ярп4520','несуществующийтовар']

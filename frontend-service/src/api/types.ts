@@ -54,7 +54,14 @@ export interface Product {
   quantity_step?: string | null;
   minimum_quantity?: string | null;
   stock: { warehouse_id: string; available_quantity: string | null }[];
-  availability?: string | { status: string; quantity: string | number | null };
+  availability?:
+    | string
+    | {
+        status: string;
+        quantity: string | number | null;
+        simulated?: boolean;
+        source?: string;
+      };
   images?: unknown[];
   pageUrl?: string | null;
   catalog_metadata?: CatalogMetadata;

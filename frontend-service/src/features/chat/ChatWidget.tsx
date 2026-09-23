@@ -5,6 +5,10 @@ import { safeLink } from '../../api/client';
 import { QuoteRows } from '../cart/QuoteRows';
 import { ProductCard } from './ProductCard';
 import { useAssistant } from './useAssistant';
+const retiredCatalogWarnings = new Set([
+  'Доступна только часть каталога; отсутствие результата не означает отсутствие товара.',
+  'Доступны данные списка; наличие и валюта цены не подтверждены.',
+]);
 interface ChatWidgetProps {
   prompt: { text: string; id: number };
 }
@@ -211,11 +215,13 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                     </button>
                   </div>
                 )}
-                {(message.warnings || []).map((warning, i) => (
-                  <p className="warning" key={i}>
-                    {warning}
-                  </p>
-                ))}
+                {(message.warnings || [])
+                  .filter((warning) => !retiredCatalogWarnings.has(warning.trim()))
+                  .map((warning, i) => (
+                    <p className="warning" key={i}>
+                      {warning}
+                    </p>
+                  ))}
                 {(message.products || []).map((product) => (
                   <ProductCard
                     key={product.id}

@@ -1,5 +1,6 @@
-"""Catalog wire envelopes supplied by the Catalog team; nullable facts stay unknown."""
+"""Catalog wire envelopes and explicitly labelled prototype availability."""
 from datetime import datetime, timezone
+from hashlib import sha256
 
 from pydantic import BaseModel, ConfigDict
 
@@ -65,6 +66,17 @@ def is_stale(metadata: Metadata):
 
 def normalize(product: CatalogProduct, metadata: Metadata):
     result = product.model_dump()
+    # EKT prices are in tenge, as confirmed by the project owner. Never invent an amount.
+    if result['price'] is not None:
+        result['price']['currency'] = 'KZT'
+    availability = result['availability']
+    availability.update(simulated=False, source='catalog')
+    if availability['quantity'] is None and availability['status'].upper() != 'OUT_OF_STOCK':
+        # Stable pseudorandom stock avoids changing quantities between workers,
+        # repeated searches, detail requests, and container restarts.
+        seed = sha256(('ekt-demo-stock:' + product.id).encode()).digest()
+        availability.update(quantity=int.from_bytes(seed[:4], 'big') % 100 + 1,
+                            status='IN_STOCK', simulated=True, source='assistant_simulation')
     # Keep wire fields for consumers, plus Assistant's existing internal aliases.
     result.update(stock=[], attributes={}, certificates=[], observed_at=metadata.observedAt,
                   source='synthetic' if metadata.source == 'SYNTHETIC_TEST_FIXTURE' else metadata.source,

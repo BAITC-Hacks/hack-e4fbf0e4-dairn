@@ -32,6 +32,8 @@ interface MockOptions {
   failedMessage?: boolean;
   expire?: boolean;
   slowUploads?: boolean;
+  products?: Product[];
+  warnings?: string[];
 }
 async function mockAssistant(page: Page, options: MockOptions = {}) {
   const received: MessageBody[] = [];
@@ -130,8 +132,8 @@ async function mockAssistant(page: Page, options: MockOptions = {}) {
         ...message!,
         status: options.failedMessage ? 'failed' : 'completed',
         answer: options.failedMessage ? null : 'Нашли товар по вашему запросу.',
-        products: options.failedMessage ? [] : [product],
-        warnings: ['Демонстрационные данные. Проверьте выбор.'],
+        products: options.failedMessage ? [] : options.products || [product],
+        warnings: options.warnings || ['Демонстрационные данные. Проверьте выбор.'],
         sources: [{ kind: 'catalog', reference: 'DEMO-C16' }],
         error: options.failedMessage
           ? {

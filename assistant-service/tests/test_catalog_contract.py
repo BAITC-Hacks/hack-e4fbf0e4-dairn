@@ -25,7 +25,7 @@ async def catalog(handler, **kwargs):
 
 
 @pytest.mark.asyncio
-async def test_wire_paths_envelopes_and_unknown_values():
+async def test_wire_paths_envelopes_and_simulated_availability():
     data = json.loads(FIXTURE.read_text())
     data['metadata']['source'] = 'EKT_PRODUCT_LIST'
     calls = []
@@ -39,13 +39,19 @@ async def test_wire_paths_envelopes_and_unknown_values():
     c = await catalog(handler)
     try:
         results = await c.search('кабель')
-        assert results[0]['availability'] == {'status': 'UNKNOWN', 'quantity': None}
-        assert results[0]['price']['currency'] is None
+        availability = results[0]['availability']
+        assert availability['status'] == 'IN_STOCK'
+        assert 1 <= availability['quantity'] <= 100
+        assert availability['simulated'] is True
+        assert availability['source'] == 'assistant_simulation'
+        assert results[0]['price'] == {'amount': data['items'][0]['price']['amount'], 'currency': 'KZT'}
         assert results[1]['price'] is None
         assert results[0]['stock'] == []
         assert results[0]['catalog_metadata'] == data['metadata']
         assert results[0]['observed_at'] is None and results[0]['stale']
-        assert (await c.detail('1001'))['id'] == '1001'
+        detail = await c.detail('1001')
+        assert detail['id'] == '1001'
+        assert detail['availability'] == availability
         assert await c.alternatives('1001') == []
         with pytest.raises(DomainError, match='no verified availability'):
             await c.availability([])
@@ -99,7 +105,7 @@ def test_fixture_contract_and_production_guard():
 
 
 @pytest.mark.asyncio
-async def test_offline_chat_labels_unknown_currency_stock_and_provenance(tmp_path):
+async def test_offline_chat_labels_simulated_stock_and_preserves_provenance(tmp_path):
     from app.main import create_app
     from app.worker import process_one
     app = create_app(settings(data_dir=tmp_path, message_wait_seconds=0, catalog_mock_on_unavailable=True))
@@ -117,9 +123,16 @@ async def test_offline_chat_labels_unknown_currency_stock_and_provenance(tmp_pat
             assert await process_one(rt)
             result = (await client.get(response.json()['status_url'], headers=headers)).json()
             assert result['status'] == 'completed'
-            assert 'валюта неизвестна' in result['answer']
-            assert 'Остаток: неизвестен' in result['answer']
+            quantity = result['products'][0]['availability']['quantity']
+            assert '850 KZT' in result['answer']
+            assert f'{quantity} (демо)' in result['answer']
+            assert 'валюта неизвестна' not in result['answer']
+            assert 'Остаток: неизвестен' not in result['answer']
             assert 'Демонстрационные данные' in result['answer']
             assert 'None' not in result['answer']
             assert result['sources'][0]['metadata']['source'] == 'SYNTHETIC_TEST_FIXTURE'
             assert any('синтетические' in w for w in result['warnings'])
+            assert 'Доступна только часть каталога; отсутствие результата не означает отсутствие товара.' not in result['warnings']
+            assert 'Доступны данные списка; наличие и валюта цены не подтверждены.' not in result['warnings']
+            assert any('Актуальность цены и наличия' in w for w in result['warnings'])
+            assert (await client.get('/v1/sessions/'+s['session_id']+'/cart', headers=headers)).status_code == 503

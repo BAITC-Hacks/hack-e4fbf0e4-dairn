@@ -116,6 +116,10 @@ export function ProductCard({ product, disabled, onSelect }: ProductCardProps) {
   const [quantity, setQuantity] = useState(product.minimum_quantity || '');
   const valid = validQuantity(quantity, product, warehouse);
   const metadata = product.catalog_metadata;
+  const simulatedAvailability =
+    typeof product.availability === 'object' && product.availability?.simulated
+      ? product.availability
+      : null;
   const unit = product.unit || t('Единица измерения неизвестна');
   const productUrl = product.pageUrl
     ? safeLink(product.pageUrl, 'product')
@@ -141,6 +145,13 @@ export function ProductCard({ product, disabled, onSelect }: ProductCardProps) {
         {priceText(product.price, t)}{' '}
         <small>{product.unit ? `/ ${product.unit}` : unit}</small>
       </p>
+      {simulatedAvailability && (
+        <small className="data-tag">
+          {t('Смоделированный остаток:')}{' '}
+          {simulatedAvailability.quantity ?? t('Остаток неизвестен')}
+          {product.unit ? ` ${product.unit}` : ''}
+        </small>
+      )}
       {metadata?.coverage === 'PARTIAL' && (
         <p className="warning">
           {t('Каталог загружен частично. Показаны только доступные данные.')}
@@ -184,7 +195,7 @@ export function ProductCard({ product, disabled, onSelect }: ProductCardProps) {
               : product.availability.status}
           </p>
         )}
-        {typeof product.availability === 'object' && (
+        {typeof product.availability === 'object' && !simulatedAvailability && (
           <p>
             {t('Количество по каталогу:')}{' '}
             {product.availability.quantity === null
@@ -202,7 +213,13 @@ export function ProductCard({ product, disabled, onSelect }: ProductCardProps) {
             </p>
           ))
         ) : (
-          <p>{t('Остатки неизвестны')}</p>
+          <p>
+            {t(
+              simulatedAvailability
+                ? 'Остатки по складам не предоставлены.'
+                : 'Остатки неизвестны',
+            )}
+          </p>
         )}
         {!metadata && (
           <small>

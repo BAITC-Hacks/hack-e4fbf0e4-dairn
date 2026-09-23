@@ -83,10 +83,6 @@ async def answer_message(rt, message):
         if metadata:
             if metadata.get('source') == 'SYNTHETIC_TEST_FIXTURE':
                 warnings.append('Каталог недоступен; используются синтетические тестовые данные.')
-            if metadata.get('coverage') != 'FULL':
-                warnings.append('Доступна только часть каталога; отсутствие результата не означает отсутствие товара.')
-            if metadata.get('detailLevel') == 'LIST_SUMMARY':
-                warnings.append('Доступны данные списка; наличие и валюта цены не подтверждены.')
             if metadata.get('freshness') not in ('FRESH', 'RECENTLY_FETCHED'):
                 warnings.append('Актуальность цены и наличия не подтверждена.')
     sources=[{'kind':'catalog','reference':p.get('sku') or p['id'],'observed_at':p.get('observed_at'), 'metadata':p.get('catalog_metadata')} for p in selected]
@@ -98,6 +94,13 @@ async def answer_message(rt, message):
     for p in selected:
         price=p.get('price'); price_text=f"{price['amount']} {price.get('currency') or '(валюта неизвестна)'}" if price else 'цена неизвестна'
         stock=', '.join(f"{s['warehouse_id']}: {s.get('available_quantity') or 'неизвестно'} {p.get('unit','')}" for s in p.get('stock',[]))
+        availability = p.get('availability')
+        if not stock and isinstance(availability, dict):
+            quantity = availability.get('quantity')
+            if quantity is not None:
+                stock = str(quantity) + (' (демо)' if availability.get('simulated') else '')
+            elif availability.get('status') == 'OUT_OF_STOCK':
+                stock = 'нет в наличии'
         lines.append(f"{p.get('sku') or p['id']} — {p['name']}. {price_text}. Остаток: {stock or 'неизвестен'}.")
         if p.get('attributes'): lines.append('; '.join(f'{k}: {v}' for k,v in p['attributes'].items()))
         if p.get('certificates'): lines.append('Сертификаты: '+', '.join(c['url'] for c in p['certificates']))
