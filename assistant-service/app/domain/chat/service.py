@@ -55,13 +55,22 @@ async def answer_message(rt, message):
             try: alternatives.extend(await rt.catalog.alternatives(p['id']))
             except DomainError: warnings.append('Аналоги сейчас недоступны.')
     if unresolved and blocks: warnings.append(f'Не найдено запросов из документа: {len(unresolved)}. Проверьте распознанные артикулы.')
-    sources=[{'kind':'catalog','reference':p['sku'],'observed_at':p.get('observed_at')} for p in selected]
+    for p in selected:
+        metadata = p.get('catalog_metadata')
+        if metadata:
+            if p.get('source') == 'synthetic':
+                warnings.append('Каталог недоступен; используются синтетические тестовые данные.')
+            if metadata.get('coverage') != 'FULL':
+                warnings.append('Доступна только часть каталога; отсутствие результата не означает отсутствие товара.')
+            if metadata.get('freshness') != 'FRESH':
+                warnings.append('Актуальность цены и наличия не подтверждена.')
+    sources=[{'kind':'catalog','reference':p['sku'],'observed_at':p.get('observed_at'), 'metadata':p.get('catalog_metadata')} for p in selected]
     sources += [{'kind':'attachment','reference':a['attachment_id']} for a in attachments]
     sources += [{'kind':'purchase_policy','reference':p['source'],'version':p['version']} for p in policies]
     lines=[]
     if any(p.get('source')=='synthetic' for p in selected): lines.append('Демонстрационные данные, не реальные цены и остатки ekt.kz.')
     for p in selected:
-        price=p.get('price'); price_text=f"{price['amount']} {price['currency']}" if price else 'цена неизвестна'
+        price=p.get('price'); price_text=f"{price['amount']} {price.get('currency') or '(валюта неизвестна)'}" if price else 'цена неизвестна'
         stock=', '.join(f"{s['warehouse_id']}: {s.get('available_quantity') or 'неизвестно'} {p.get('unit','')}" for s in p.get('stock',[]))
         lines.append(f"{p['sku']} — {p['name']}. {price_text}. Остаток: {stock or 'неизвестен'}.")
         if p.get('attributes'): lines.append('; '.join(f'{k}: {v}' for k,v in p['attributes'].items()))

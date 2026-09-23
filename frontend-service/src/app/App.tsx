@@ -91,6 +91,15 @@ export function App() {
             Сайт ЭКТ
             <Icon name="arrow" size={16} />
           </a>
+          <a
+            href="/cart"
+            className="header-cart"
+            aria-label="Корзина"
+            aria-current={isCart ? 'page' : undefined}
+          >
+            <Icon name="cart" size={22} />
+            <span>Корзина</span>
+          </a>
         </div>
         <nav
           className="site-container site-nav"

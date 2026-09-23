@@ -1,7 +1,7 @@
 from typing import Any, Literal
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import SecretStr, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class Model(BaseModel):
@@ -14,7 +14,8 @@ class SessionRequest(Model):
 
 class SessionResponse(Model):
     session_id: str
-    session_token: str
+    session_token: str | None = None
+    user_id: str | None = None
     expires_at: str
     locale: str
     mode: str
@@ -130,3 +131,47 @@ class ErrorResponse(Model):
     message: str
     retryable: bool
     request_id: str
+
+
+class User(Model):
+    user_id: str
+    username: str
+    display_name: str
+    created_at: str
+
+
+class LoginRequest(Model):
+    username: str = Field(min_length=3, max_length=64, pattern=r'^[a-z0-9_.-]+$')
+    password: SecretStr = Field(min_length=12, max_length=128)
+
+    @field_validator('username', mode='before')
+    @classmethod
+    def normalize_username(cls, value):
+        return value.strip().lower() if isinstance(value, str) else value
+
+
+class RegisterRequest(LoginRequest):
+    display_name: str = Field(min_length=1, max_length=100)
+
+    @field_validator('display_name')
+    @classmethod
+    def name_not_blank(cls, value):
+        if not value.strip():
+            raise ValueError('Display name must not be blank')
+        return value.strip()
+
+
+class AuthResponse(Model):
+    access_token: str
+    token_type: Literal['bearer']
+    expires_at: str
+    user: User
+
+
+class Conversation(Model):
+    session_id: str
+    user_id: str
+    created_at: str
+    expires_at: str
+    locale: str
+    mode: str

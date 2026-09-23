@@ -33,6 +33,16 @@ class Store:
         with self.connect() as con:
             con.executescript('''
                 PRAGMA journal_mode=WAL;
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE,
+                    display_name TEXT NOT NULL, created_at TEXT NOT NULL, password_hash TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS auth_tokens (
+                    token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(user_id), expires REAL NOT NULL);
+                CREATE INDEX IF NOT EXISTS auth_tokens_user ON auth_tokens(user_id);
+                CREATE TABLE IF NOT EXISTS user_sessions (
+                    session_id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(user_id));
+                CREATE INDEX IF NOT EXISTS user_sessions_user ON user_sessions(user_id);
+                CREATE TABLE IF NOT EXISTS auth_limits (key TEXT PRIMARY KEY, attempts INTEGER NOT NULL, expires REAL NOT NULL);
                 CREATE TABLE IF NOT EXISTS objects (
                     id TEXT PRIMARY KEY, kind TEXT NOT NULL, session TEXT NOT NULL,
                     data TEXT NOT NULL, created REAL NOT NULL, expires REAL NOT NULL);
@@ -50,6 +60,7 @@ class Store:
     def connect(self):
         con = sqlite3.connect(self.path, timeout=5, factory=ClosingConnection)
         con.row_factory = sqlite3.Row
+        con.execute("PRAGMA foreign_keys=ON")
         return con
 
     @contextmanager
@@ -82,9 +93,9 @@ class Store:
             raise DomainError(410, 'expired', 'Resource has expired')
         return json.loads(row['data'])
 
-    def list(self, session, kind, limit=100):
+    def list(self, session, kind, limit=100, offset=0):
         with self.connect() as con:
-            rows = con.execute('SELECT data FROM objects WHERE session=? AND kind=? AND expires>? ORDER BY created DESC LIMIT ?', (session, kind, time.time(), limit)).fetchall()
+            rows = con.execute('SELECT data FROM objects WHERE session=? AND kind=? AND expires>? ORDER BY created DESC, id DESC LIMIT ? OFFSET ?', (session, kind, time.time(), limit, offset)).fetchall()
         return [json.loads(r['data']) for r in reversed(rows)]
 
     def enqueue(self, con, id, kind, capacity):
@@ -122,6 +133,9 @@ class Store:
                 con.execute('DELETE FROM jobs WHERE id=?', (row['id'],))
                 con.execute('DELETE FROM dedup WHERE object_id=?', (row['id'],))
             con.execute('DELETE FROM objects WHERE expires<=?', (time.time(),))
+            con.execute("DELETE FROM user_sessions WHERE session_id NOT IN (SELECT id FROM objects WHERE kind='session')")
+            con.execute('DELETE FROM auth_tokens WHERE expires<=?', (time.time(),))
+            con.execute('DELETE FROM auth_limits WHERE expires<=?', (time.time(),))
 
         # Clean uploads orphaned by a crash between streaming and metadata commit.
         folder = self.directory / 'uploads'

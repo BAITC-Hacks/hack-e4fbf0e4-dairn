@@ -246,3 +246,10 @@ Certificate and cart links should allow only HTTP(S) and expected origins. Never
 - Expired/superseded/changed-stock proposals require explicit confirmation again.
 - Session expiry and cross-session access errors are handled without leaking other sessions.
 - Mobile layout supports file selection, review of exact quantities and a direct current-cart link.
+
+
+## Catalog response update (2026-09-23)
+
+In HTTP Catalog mode, message `products` preserve Catalog fields: `price` may be null; `price.currency`, `pageUrl`, and `availability.quantity` may be null; `availability` is an object `{status, quantity}`. Legacy standalone demo mode still uses a string for `availability`. Render unknown values as unknown, never zero/free/in stock. Images may be empty.
+
+Products include `catalog_metadata` with source, coverage, freshness, timestamps and detail level. Source entries also include this metadata. `stock`, `attributes`, and `certificates` remain empty when the list-summary contract provides none. Preserve user-visible warnings about partial coverage and unknown freshness. `source: synthetic` plus metadata `source: SYNTHETIC_TEST_FIXTURE` identifies offline fixtures, not partner inventory. Real cart actions remain disabled in HTTP mode, including during fallback.

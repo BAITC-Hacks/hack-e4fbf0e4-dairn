@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
+from app.api.v1.auth import router as auth_router
 from app.api.health import router as health_router
 from app.api.models import ErrorResponse
 from app.api.v1.router import router as v1_router
@@ -29,7 +30,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.settings=settings
     application.add_middleware(BodyLimitMiddleware,upload_limit=settings.upload_max_bytes)
     application.add_middleware(CORSMiddleware,allow_origins=settings.cors_origins,
-        allow_methods=['GET','POST'],allow_headers=['Authorization','Content-Type','Idempotency-Key'],
+        allow_methods=['GET','POST','DELETE'],allow_headers=['Authorization','Content-Type','Idempotency-Key'],
         expose_headers=['Location','Retry-After','Server-Timing'])
 
     @application.exception_handler(DomainError)
@@ -54,6 +55,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return response
 
     application.include_router(health_router)
+    application.include_router(auth_router,responses={code:{'model':ErrorResponse} for code in (401,409,422,429)})
     application.include_router(v1_router,responses={code:{'model':ErrorResponse} for code in (400,401,403,404,409,410,413,415,422,429,503)})
     return application
 

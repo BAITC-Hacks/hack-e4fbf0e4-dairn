@@ -1,5 +1,6 @@
 # hack-e4fbf0e4-dairn
 
+
 Hackathon team repository for DAIRN: EKT website assistant.
 
 Start with the [developer handoff](docs/developer-handoff.md), [architecture](docs/architecture.md), [complete case brief](hackathon-task.json), and [application task plan](planning/ekt-plan.json).
@@ -50,3 +51,53 @@ Default catalog data and cart operations are synthetic demonstrations. The widge
 docker compose -f frontend-service/docker-compose.yml run --build --rm frontend-test
 docker compose -f frontend-service/docker-compose.yml run --build --rm frontend-e2e
 ```
+
+Репозиторий команды хакатона DAIRN. В этой ветке расположен автономный сервис каталога EKT
+и документация его текущего контракта.
+
+## Быстрый старт
+
+Требуются JDK 21 и Gradle 8.8. Из корня репозитория:
+
+```sh
+cd ekt-catalog-service
+sh ./gradlew test serverDist
+```
+
+Сервер запускается отдельной задачей:
+
+```sh
+gradle runServer
+```
+
+По умолчанию он доступен только на `127.0.0.1:8080`. Для запуска на сохранённой странице
+каталога укажите `CATALOG_SOURCE=snapshot` и путь `CATALOG_SNAPSHOT_PATH`; подробности — в
+[контракте API](docs/API.md). Для live-режима нужны переменные EKT в окружении процесса;
+их нельзя добавлять в Git, аргументы команд или документацию.
+
+## Состав
+
+- [ekt-catalog-service](ekt-catalog-service/README.md) — Kotlin/Ktor сервис, CLI, Gradle,
+  Docker/Compose и скрипты проверки;
+- [Catalog API](docs/API.md) — публичные маршруты и значения отсутствующих данных;
+- [Данные EKT](docs/EKT_DATA.md) — границы и поля изученного образца списка товаров;
+- [AI-поиск](docs/AI_SEARCH.md) — ограниченный сценарий поиска кандидатов через OpenAI;
+- [Развёртывание](docs/DEPLOYMENT.md) — локальная проверка, контейнеризация и условия
+  production-развёртывания;
+- [Комментарии по документации](docs/WORK_COMMENTS.md) — открытые ограничения и следующие
+  шаги по итогам чтения этой ветки.
+
+## Важные ограничения
+
+Сервис проверен на сохранённом образце первой страницы из 20 товаров. Это частичный охват,
+а не подтверждение живого доступа к EKT, полной пагинации или схемы деталей товара. Описания
+и характеристики из карточки нужны каталогу, но должны поступать отдельно: свободный текст
+описания не следует автоматически представлять как структурированные характеристики.
+
+Фильтр EKT «В наличии» сам по себе не подтверждает количество остатков. Пока отдельное
+числовое поле API не проверено, доступность следует передавать как «есть / нет / неизвестно»,
+а количество оставлять неизвестным.
+
+AI-поиск формирует только потенциальных кандидатов. Он не подтверждает техническую
+совместимость, актуальное наличие или цену и не заменяет правила каталога.
+

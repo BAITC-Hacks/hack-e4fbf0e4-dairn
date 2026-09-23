@@ -34,7 +34,7 @@ The Docker frontend serves a production build through Vite preview for local tes
 - Supported extensions: XLSX/XLS, DOCX/DOC, PDF, JPEG/JPG, PNG. Maximum 10 MiB per file, 10 files per message, 20 uploads per session. The backend validates signatures and extraction limits. Upload POSTs have no idempotency key and are never retried silently; failed uploads require manual removal/reselection.
 - Product cards show prices, stock by warehouse, attributes, freshness, certificates and source. Unknown values stay unknown. Decimal quantity validation checks minimum, step and known available stock without floating-point rounding.
 - Selection is unique per product/warehouse. Re-selecting updates that row. Requesting a quote does not change the cart. Users review the exact product, quantity, unit, warehouse and price before pressing **Добавить в корзину**. Transport retries reuse the original confirmation key/body; edits require a new proposal. Stock/price changes invalidate the proposal; use **Обновить товары и остатки** and review again.
-- `/cart?session_id=…` fetches the authenticated current demo cart. A mismatched or absent tab session cannot access another cart. Cart links allow only this origin; certificate links allow the API origin, `https://ekt.kz`, and explicitly configured `VITE_CERTIFICATE_ORIGINS` (comma-separated origins). Unexpected links are shown as unavailable.
+- The top-right **Корзина** button opens `/cart` for the active tab session. `/cart?session_id=…` fetches the authenticated current demo cart. A mismatched or absent tab session cannot access another cart. Cart links allow only this origin; certificate links allow the API origin, `https://ekt.kz`, and explicitly configured `VITE_CERTIFICATE_ORIGINS` (comma-separated origins). Unexpected links are shown as unavailable.
 - API answers and warnings render as plain text. No payment form or analytics is included. Model availability, extraction quality and authoritative purchase terms are backend concerns; their warnings/errors are shown.
 
 ## Verification
@@ -67,3 +67,5 @@ Automated accessibility checks are a baseline, not a full audit. Lighthouse CI a
 - `e2e/`: deterministic browser tests; unit tests live under `src/`.
 
 Implementation follows the supplied [React standards](react-standards.md) and [backend frontend contract](../assistant-service/FRONTEND_AGENT.md). Companion references mentioned in the supplied skill were not attached.
+
+Live model verification is recorded in [LIVE_TEST_REPORT.md](LIVE_TEST_REPORT.md).

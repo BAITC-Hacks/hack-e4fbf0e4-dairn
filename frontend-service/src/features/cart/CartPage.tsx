@@ -21,7 +21,7 @@ export function CartPage() {
     );
     async function load() {
       try {
-        if (!session || session.session_id !== expected)
+        if (!session || (expected !== null && session.session_id !== expected))
           throw new Error(
             'Эта корзина недоступна в текущей вкладке. Вернитесь в чат и откройте ссылку из своей сессии.',
           );

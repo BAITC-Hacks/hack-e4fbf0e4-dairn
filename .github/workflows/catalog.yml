@@ -1,0 +1,35 @@
+name: Catalog build and container smoke
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ekt-catalog-service
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build from source and run tests
+        run: docker build -t ekt-service-catalog:latest -t "ekt-service-catalog:$(git rev-parse --short HEAD)" .
+      - name: Start isolated snapshot deployment
+        run: |
+          docker run -d --name catalog-smoke -p 127.0.0.1:8080:8080 \
+            -e CATALOG_SOURCE=snapshot -e CATALOG_SNAPSHOT_PATH=/data/products.json \
+            -v "$PWD/src/test/resources/ekt/products-page-1.json:/data/products.json:ro" \
+            ekt-service-catalog:latest
+      - name: Verify deployed container
+        run: |
+          PRODUCT_ID=$(python3 -c 'import json; d=json.load(open("src/test/resources/ekt/products-page-1.json")); print(d["items"][0]["id"])')
+          for attempt in $(seq 1 30); do
+            if python3 scripts/smoke.py http://127.0.0.1:8080 "$PRODUCT_ID"; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Inspect and stop
+        if: always()
+        run: |
+          docker logs catalog-smoke || true
+          docker rm -f catalog-smoke || true

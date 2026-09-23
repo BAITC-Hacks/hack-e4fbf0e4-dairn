@@ -20,6 +20,17 @@ def session(session_id: str, request: Request, credentials: HTTPAuthorizationCre
     try: data=rt.store.get(session_id,'session',session_id)
     except DomainError as exc:
         raise DomainError(401,'session_expired','Session is missing or expired') from exc
+    if data.get('user_id'):
+        user = rt.auth.authenticate(credentials.credentials)
+        if user['user_id'] != data['user_id']:
+            raise DomainError(404, 'not_found', 'Conversation not found')
+        return data
     if not hmac.compare_digest(data['_token_hash'],digest(credentials.credentials)):
         raise DomainError(403,'session_mismatch','Token does not belong to this session')
     return data
+
+
+def current_user(request: Request, credentials: HTTPAuthorizationCredentials | None=Depends(bearer)):
+    if not credentials:
+        raise DomainError(401, 'unauthorized', 'Bearer account token required')
+    return runtime(request).auth.authenticate(credentials.credentials)

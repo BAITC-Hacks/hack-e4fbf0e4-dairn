@@ -11,9 +11,9 @@ from fastapi import APIRouter, Depends, File, Header, Query, Request, Response, 
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials
 
-from app.api.dependencies import bearer, runtime, session
+from app.api.dependencies import bearer, current_user, runtime, session
 from app.api.models import (AttachmentResponse, CartCommit, CartResponse, Confirmation,
-    MessageRequest, MessageResponse, ProposalRequest, ProposalResponse, SessionRequest, SessionResponse)
+    Conversation, MessageRequest, MessageResponse, ProposalRequest, ProposalResponse, SessionRequest, SessionResponse)
 from app.core.errors import DomainError
 from app.domain.attachments.parser import SUPPORTED, redact
 from app.domain.cart.service import digest, iso
@@ -29,15 +29,54 @@ def public(data):
 @router.post('/sessions',response_model=SessionResponse,status_code=201,tags=['sessions'])
 def create_session(body: SessionRequest,request: Request,credentials: HTTPAuthorizationCredentials | None=Depends(bearer)):
     rt=runtime(request); settings=rt.settings
-    if not settings.allow_demo_sessions:
-        if not credentials or not settings.bootstrap_token or not hmac.compare_digest(credentials.credentials,settings.bootstrap_token.get_secret_value()):
-            raise DomainError(401,'bootstrap_required','Trusted backend bootstrap credential required')
-    sid=uid(); token=secrets.token_urlsafe(32); expires=time.time()+settings.session_ttl_seconds
+    user = None
+    is_bootstrap = bool(credentials and settings.bootstrap_token and hmac.compare_digest(
+        credentials.credentials, settings.bootstrap_token.get_secret_value()))
+    if credentials and not is_bootstrap:
+        user = rt.auth.authenticate(credentials.credentials)
+    if not user and not settings.allow_demo_sessions and not is_bootstrap:
+        raise DomainError(401,'bootstrap_required','Account or trusted backend credential required')
+    sid=uid(); token=secrets.token_urlsafe(32)
+    ttl = settings.user_history_ttl_days*86400 if user else settings.session_ttl_seconds
+    expires=time.time()+ttl
     data={'session_id':sid,'expires_at':iso(expires),'locale':body.locale,
-          'mode':'demo' if settings.allow_demo_sessions else 'authenticated',
-          '_token_hash':digest(token),'_expires':expires}
-    with rt.store.transaction() as con: rt.store.put(con,sid,'session',sid,data,expires)
-    return public(data)|{'session_token':token}
+          'mode':'authenticated' if user or is_bootstrap else 'demo',
+          'user_id':user['user_id'] if user else None, 'created_at':iso(time.time()),
+          '_token_hash':None if user else digest(token),'_expires':expires}
+    with rt.store.transaction() as con:
+        rt.store.put(con,sid,'session',sid,data,expires)
+        if user:
+            con.execute('INSERT INTO user_sessions VALUES(?,?)', (sid,user['user_id']))
+    return public(data)|{'session_token':None if user else token}
+
+
+@router.get('/sessions',response_model=list[Conversation],tags=['sessions'])
+def conversations(request: Request, limit: int=Query(default=50,ge=1,le=200),
+                  offset: int=Query(default=0,ge=0), user=Depends(current_user)):
+    with runtime(request).store.connect() as con:
+        rows = con.execute("""SELECT o.data FROM objects o JOIN user_sessions s ON s.session_id=o.id
+            WHERE s.user_id=? AND o.kind='session' AND o.expires>?
+            ORDER BY o.created DESC, o.id DESC LIMIT ? OFFSET ?""",
+            (user['user_id'],time.time(),limit,offset)).fetchall()
+    return [public(json.loads(r['data'])) for r in rows]
+
+
+@router.delete('/sessions/{session_id}',status_code=204,tags=['sessions'])
+def delete_conversation(session_id: str,request: Request,user=Depends(current_user),auth=Depends(session)):
+    if auth.get('user_id') != user['user_id']:
+        raise DomainError(404,'not_found','Conversation not found')
+    store = runtime(request).store
+    with store.transaction() as con:
+        rows = con.execute("SELECT data FROM objects WHERE session=? AND kind='attachment'", (session_id,)).fetchall()
+        for row in rows:
+            path = json.loads(row['data']).get('_path')
+            if path:
+                Path(path).unlink(missing_ok=True)
+        con.execute('DELETE FROM jobs WHERE id IN (SELECT id FROM objects WHERE session=?)', (session_id,))
+        con.execute('DELETE FROM dedup WHERE session=?', (session_id,))
+        con.execute('DELETE FROM user_sessions WHERE session_id=?', (session_id,))
+        con.execute('DELETE FROM objects WHERE session=?', (session_id,))
+    return Response(status_code=204)
 
 
 @router.post('/sessions/{session_id}/attachments',response_model=AttachmentResponse,status_code=202,tags=['attachments'])
@@ -57,13 +96,14 @@ async def upload(session_id: str, request: Request, file: Annotated[UploadFile, 
                     raise DomainError(413,'file_too_large','Maximum file size is 10 MiB')
                 target.write(chunk)
         if size==0: raise DomainError(422,'empty_file','File is empty')
+        attachment_expires=min(auth['_expires'],time.time()+86400)
         data={'attachment_id':aid,'filename':Path(file.filename).name[:200],
-              'media_type':SUPPORTED[extension],'status':'queued','expires_at':auth['expires_at'],
+              'media_type':SUPPORTED[extension],'status':'queued','expires_at':iso(attachment_expires),
               'warnings':[],'error':None,'blocks_count':0,'_path':str(path.resolve()),'_session':session_id}
         with rt.store.transaction() as con:
             if con.execute("SELECT count(*) FROM objects WHERE session=? AND kind='attachment' AND expires>?",(session_id,time.time())).fetchone()[0]>=rt.settings.max_session_attachments:
                 raise DomainError(429,'attachment_limit','Session attachment limit reached')
-            rt.store.put(con,aid,'attachment',session_id,data,auth['_expires'])
+            rt.store.put(con,aid,'attachment',session_id,data,attachment_expires)
             rt.store.enqueue(con,aid,'attachment',rt.settings.max_pending_jobs)
         return public(data)
     except BaseException:
@@ -112,8 +152,8 @@ async def send_message(session_id: str,body: MessageRequest,request: Request,res
 
 
 @router.get('/sessions/{session_id}/messages',response_model=list[MessageResponse],tags=['messages'])
-def history(session_id: str,request: Request,limit: int=Query(default=50,ge=1,le=200),auth=Depends(session)):
-    return [public(m) for m in runtime(request).store.list(session_id,'message',limit)]
+def history(session_id: str,request: Request,limit: int=Query(default=50,ge=1,le=200),offset: int=Query(default=0,ge=0),auth=Depends(session)):
+    return [public(m) for m in runtime(request).store.list(session_id,'message',limit,offset)]
 
 
 @router.get('/sessions/{session_id}/messages/{message_id}',response_model=MessageResponse,tags=['messages'])
@@ -123,14 +163,14 @@ def get_message(session_id: str,message_id: str,request: Request,auth=Depends(se
 
 @router.get('/sessions/{session_id}/messages/{message_id}/events',tags=['messages'],
             response_class=StreamingResponse,responses={200:{'content':{'text/event-stream':{}},'description':'SSE status snapshots; completed or failed is terminal'}})
-async def events(session_id: str,message_id: str,request: Request,auth=Depends(session)):
+async def events(session_id: str,message_id: str,request: Request,auth=Depends(session),credentials=Depends(bearer)):
     rt=runtime(request); rt.store.get(message_id,'message',session_id)
     async def stream():
         previous=None; deadline=time.monotonic()+30
         while time.monotonic()<deadline:
             if await request.is_disconnected(): return
             try:
-                rt.store.get(session_id,'session',session_id)
+                session(session_id,request,credentials)
                 data=public(rt.store.get(message_id,'message',session_id))
             except DomainError as exc:
                 yield 'event: error\ndata: '+json.dumps(exc.body())+'\n\n'; return

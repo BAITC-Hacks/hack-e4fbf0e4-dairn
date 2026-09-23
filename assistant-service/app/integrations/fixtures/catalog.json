@@ -1,0 +1,193 @@
+{
+  "items": [
+    {
+      "id": "1001",
+      "sku": "CABLE-001",
+      "name": "Кабель ВВГнг 3×2.5",
+      "price": {
+        "amount": "850",
+        "currency": null
+      },
+      "images": [],
+      "pageUrl": null,
+      "availability": {
+        "status": "UNKNOWN",
+        "quantity": null
+      }
+    },
+    {
+      "id": "1002",
+      "sku": "CABLE-002",
+      "name": "Кабель ВВГнг 3×1.5",
+      "price": null,
+      "images": [],
+      "pageUrl": null,
+      "availability": {
+        "status": "UNKNOWN",
+        "quantity": null
+      }
+    },
+    {
+      "id": "45357",
+      "sku": "ярп4520",
+      "name": "***LED STARK 30W 2400Lm d98x180 4000K IP20 MEGALIGHT (20)",
+      "price": {
+        "amount": "1810",
+        "currency": null
+      },
+      "images": [],
+      "pageUrl": null,
+      "availability": {
+        "status": "UNKNOWN",
+        "quantity": null
+      }
+    },
+    {
+      "id": "1003",
+      "sku": "CABLE-003",
+      "name": "Кабель ВВГнг 5×2.5",
+      "price": {
+        "amount": "1420",
+        "currency": null
+      },
+      "images": [],
+      "pageUrl": null,
+      "availability": {
+        "status": "UNKNOWN",
+        "quantity": null
+      }
+    },
+    {
+      "id": "1004",
+      "sku": "CABLE-004",
+      "name": "Кабель ПВС 2×1.5",
+      "price": {
+        "amount": "480",
+        "currency": null
+      },
+      "images": [],
+      "pageUrl": null,
+      "availability": {
+        "status": "UNKNOWN",
+        "quantity": null
+      }
+    },
+    {
+      "id": "1005",
+      "sku": "CABLE-005",
+      "name": "Кабель NYM 3×2.5",
+      "price": {
+        "amount": "960",
+        "currency": null
+      },
+      "images": [],
+      "pageUrl": null,
+      "availability": {
+        "status": "UNKNOWN",
+        "quantity": null
+      }
+    },
+    {
+      "id": "2001",
+      "sku": "BREAKER-C16",
+      "name": "Автоматический выключатель C16 1P",
+      "price": {
+        "amount": "1500",
+        "currency": null
+      },
+      "images": [],
+      "pageUrl": null,
+      "availability": {
+        "status": "UNKNOWN",
+        "quantity": null
+      }
+    },
+    {
+      "id": "2002",
+      "sku": "BREAKER-C25",
+      "name": "Автоматический выключатель C25 1P",
+      "price": {
+        "amount": "1750",
+        "currency": null
+      },
+      "images": [],
+      "pageUrl": null,
+      "availability": {
+        "status": "UNKNOWN",
+        "quantity": null
+      }
+    },
+    {
+      "id": "3001",
+      "sku": "LED-001",
+      "name": "Лампа LED E27 12W 4000K",
+      "price": {
+        "amount": "720",
+        "currency": null
+      },
+      "images": [],
+      "pageUrl": null,
+      "availability": {
+        "status": "UNKNOWN",
+        "quantity": null
+      }
+    },
+    {
+      "id": "3002",
+      "sku": "LED-002",
+      "name": "Светильник LED 36W 4000K IP20",
+      "price": null,
+      "images": [],
+      "pageUrl": null,
+      "availability": {
+        "status": "UNKNOWN",
+        "quantity": null
+      }
+    },
+    {
+      "id": "4001",
+      "sku": "SOCKET-001",
+      "name": "Розетка с заземлением белая",
+      "price": {
+        "amount": "1250",
+        "currency": null
+      },
+      "images": [],
+      "pageUrl": null,
+      "availability": {
+        "status": "UNKNOWN",
+        "quantity": null
+      }
+    },
+    {
+      "id": "5001",
+      "sku": "BOX-001",
+      "name": "Коробка распределительная 100×100 IP54",
+      "price": {
+        "amount": "680",
+        "currency": null
+      },
+      "images": [],
+      "pageUrl": null,
+      "availability": {
+        "status": "UNKNOWN",
+        "quantity": null
+      }
+    }
+  ],
+  "metadata": {
+    "source": "SYNTHETIC_TEST_FIXTURE",
+    "mode": "SNAPSHOT",
+    "coverage": "PARTIAL",
+    "pages": [
+      1
+    ],
+    "loadedProducts": 12,
+    "totalProducts": null,
+    "observedAt": null,
+    "loadedAt": "2026-09-23T10:24:00Z",
+    "expiresAt": null,
+    "freshness": "UNKNOWN",
+    "detailLevel": "LIST_SUMMARY"
+  }
+}

@@ -372,3 +372,31 @@ test('HTTP-success terminal message failure remains visible', async ({
     page.getByRole('button', { name: 'Исправить и отправить заново' }),
   ).toBeVisible();
 });
+
+test('header cart opens the current session cart without exposing the token', async ({
+  page,
+}) => {
+  await mockAssistant(page);
+  await page.goto('/');
+  await expect(
+    page.getByRole('textbox', { name: 'Ваше сообщение' }),
+  ).toBeEnabled();
+  await page.getByRole('button', { name: 'Свернуть чат', exact: true }).click();
+  const cartLink = page.getByRole('link', { name: 'Корзина', exact: true });
+  await expect(cartLink).toBeVisible();
+  await expect(cartLink).toHaveAttribute('href', '/cart');
+  await cartLink.click();
+  await expect(
+    page.getByRole('heading', { name: 'Ваша демо-корзина' }),
+  ).toBeVisible();
+  await expect(page.getByText('В корзине пока нет товаров.')).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Корзина', exact: true }),
+  ).toHaveAttribute('aria-current', 'page');
+  expect(page.url()).not.toContain('test-secret');
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});

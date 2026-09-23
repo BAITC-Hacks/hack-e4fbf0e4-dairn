@@ -45,6 +45,10 @@ python3 -m venv .venv
 
 Local settings read exported `ASSISTANT_*` variables; `.env` is loaded by Compose's `--env-file`, not implicitly by local processes. Do not run only the API and expect processing to complete.
 
+## Catalog wire contract and offline tests
+
+The HTTP adapter follows the supplied `/api/catalog/products?query=…` and `/api/catalog/products/{id}` envelopes. See [CATALOG_INTEGRATION.md](CATALOG_INTEGRATION.md) for mappings, sample fixtures, and offline configuration. The old `/v1/products`, alternatives and availability-check calls are no longer used in HTTP mode.
+
 ## Code map
 
 - `app/api/v1/router.py`: sessions, uploads, messages/history/status/SSE and cart endpoints.
