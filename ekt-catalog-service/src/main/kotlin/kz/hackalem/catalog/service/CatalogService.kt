@@ -60,7 +60,8 @@ class CatalogService(private val catalog: NormalizedCatalog? = null) {
         val query = CatalogInput.searchQuery(queries).lowercase(Locale.ROOT)
         val snapshot = snapshot()
         val items = snapshot.products.filter {
-            it.sku?.lowercase(Locale.ROOT)?.contains(query) == true || it.name.lowercase(Locale.ROOT).contains(query)
+            it.sku?.lowercase(Locale.ROOT)?.contains(query) == true || it.name.lowercase(Locale.ROOT).contains(query) ||
+                CatalogSearchAliases.matches(it.name, query)
         }.sortedBy { if (it.sku?.lowercase(Locale.ROOT) == query) 0 else 1 }
         return SearchResponse(items, snapshot.metadata)
     }

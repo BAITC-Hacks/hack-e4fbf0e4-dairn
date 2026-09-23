@@ -110,7 +110,7 @@ class CatalogDataTest {
         val clock = MutableClock()
         var calls = 0
         var broken = false
-        val catalog = CachedEktCatalog({ calls++; if (broken) throw EktException.Unavailable(); delay(10); products() }, SourceMode.LIVE, Duration.ofSeconds(60), clock)
+        val catalog = CachedEktCatalog({ calls++; if (broken) throw EktException.Unavailable(); delay(10); LoadedCatalog(products(), listOf(1)) }, SourceMode.LIVE, Duration.ofSeconds(60), clock)
         coroutineScope { (1..10).map { async { catalog.snapshot() } }.awaitAll() }
         assertEquals(1, calls)
         assertEquals(clock.instant(), catalog.snapshot().metadata.observedAt)
@@ -124,7 +124,7 @@ class CatalogDataTest {
     }
 
     @Test fun `load deadline and disabled configuration are explicit`() = runBlocking {
-        val catalog = CachedEktCatalog({ delay(1000); products() }, SourceMode.LIVE, timeoutMs = 10)
+        val catalog = CachedEktCatalog({ delay(1000); LoadedCatalog(products(), listOf(1)) }, SourceMode.LIVE, timeoutMs = 10)
         assertFailsWith<EktException.Timeout> { catalog.snapshot() }
         assertNull(CatalogSources.fromEnvironment(emptyMap()))
         assertFailsWith<EktException.Configuration> { CatalogSources.fromEnvironment(mapOf("CATALOG_SOURCE" to "snapshot")) }

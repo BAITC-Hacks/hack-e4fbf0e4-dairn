@@ -25,6 +25,7 @@ data class CatalogMetadata(
     val observedAt: Instant?,
     val loadedAt: Instant,
     val expiresAt: Instant?,
+    val pages: List<Int> = listOf(page),
 )
 data class CatalogSnapshot(val products: List<Product>, val metadata: CatalogMetadata)
 data class ProductResponse(val product: Product, val metadata: CatalogMetadata)

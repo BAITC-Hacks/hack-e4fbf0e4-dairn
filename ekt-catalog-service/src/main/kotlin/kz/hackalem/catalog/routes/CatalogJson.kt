@@ -5,7 +5,15 @@ import kz.hackalem.catalog.model.*
 
 /** Explicit normalized HTTP projection. Raw upstream JSON is never serializable through this API. */
 internal fun ProductResponse.json() = buildJsonObject { put("product", product.json()); put("metadata", metadata.json()) }
-internal fun SearchResponse.json() = buildJsonObject { put("items", JsonArray(items.map { it.json() })); put("metadata", metadata.json()) }
+internal fun SearchResponse.json() = buildJsonObject {
+    put("items", JsonArray(items.map { it.json() }))
+    put("matchedProducts", items.size)
+    put("warnings", buildJsonArray { add(buildJsonObject {
+        put("code", "PARTIAL_CATALOG_SEARCH")
+        put("message", "Search covers only loaded catalog pages; no matches does not imply absence from the full catalog")
+    }) })
+    put("metadata", metadata.json())
+}
 internal fun AvailabilityResponse.json() = buildJsonObject {
     put("productId", productId); put("availability", availability.json()); put("metadata", metadata.json())
 }
@@ -24,7 +32,7 @@ private fun Availability.json() = buildJsonObject {
 }
 internal fun CatalogMetadata.json() = buildJsonObject {
     put("source", "EKT_PRODUCT_LIST"); put("mode", mode.name)
-    put("coverage", "PARTIAL"); put("pages", buildJsonArray { add(page) })
+    put("coverage", "PARTIAL"); put("pages", buildJsonArray { pages.forEach { add(it) } })
     put("loadedProducts", loadedProducts); put("totalProducts", JsonNull)
     put("observedAt", observedAt?.toString()?.let(::JsonPrimitive) ?: JsonNull)
     put("loadedAt", loadedAt.toString())

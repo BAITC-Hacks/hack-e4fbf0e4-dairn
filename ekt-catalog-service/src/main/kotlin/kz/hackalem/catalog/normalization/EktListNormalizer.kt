@@ -8,9 +8,10 @@ import kz.hackalem.catalog.model.*
 
 /** Mapping is based on docs/EKT_DATA.md, observed list page only; detail schema is still unknown. */
 internal object EktListNormalizer {
-    fun normalize(value: JsonElement, maxProducts: Int): List<Product> {
+    fun normalize(value: JsonElement, maxProducts: Int, expectedPage: Int? = null): List<Product> {
         val root = value as? JsonObject ?: invalid()
-        if (integer(root["page"]) != "1") invalid()
+        val page = integer(root["page"]).toIntOrNull()?.takeIf { it > 0 } ?: invalid()
+        if (expectedPage != null && page != expectedPage) invalid()
         integer(root["per_page"])
         integer(root["count"])
         val items = root["items"] as? JsonArray ?: invalid()
