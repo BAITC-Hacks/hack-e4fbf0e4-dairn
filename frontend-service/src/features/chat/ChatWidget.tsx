@@ -1,20 +1,22 @@
+import { useLocale } from '../../i18n/LocaleProvider';
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { safeLink } from '../../api/client';
 import { QuoteRows } from '../cart/QuoteRows';
 import { ProductCard } from './ProductCard';
 import { useAssistant } from './useAssistant';
-const statuses: Record<string, string> = {
-  queued: 'Запрос в очереди…',
-  waiting_for_attachments: 'Изучаем ваши файлы…',
-  processing: 'Ищем ответ…',
-  completed: 'Готово',
-  failed: 'Не удалось обработать запрос',
-};
 interface ChatWidgetProps {
   prompt: { text: string; id: number };
 }
 export function ChatWidget({ prompt }: ChatWidgetProps) {
+  const { t, dateLocale } = useLocale();
+  const statuses: Record<string, string> = {
+    queued: t('Запрос в очереди…'),
+    waiting_for_attachments: t('Изучаем ваши файлы…'),
+    processing: t('Ищем ответ…'),
+    completed: t('Готово'),
+    failed: t('Не удалось обработать запрос'),
+  };
   const assistant = useAssistant();
   const [open, setOpen] = useState(true);
   const [draft, setDraft] = useState('');
@@ -90,26 +92,26 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
             <Icon name="bolt" size={23} />
           </span>
           <div>
-            <h2 id="assistant-title">Помощник ЭКТ</h2>
+            <h2 id="assistant-title">{t('Помощник ЭКТ')}</h2>
             <p>
               <span className="connection-dot" />
               {assistant.connecting
-                ? 'Подключаемся…'
+                ? t('Подключаемся…')
                 : assistant.session
-                  ? 'Помогаем с выбором'
-                  : 'Нет соединения'}
+                  ? t('Помогаем с выбором')
+                  : t('Нет соединения')}
             </p>
           </div>
           <button
             className="icon-button"
             onClick={close}
-            aria-label="Свернуть чат"
+            aria-label={t('Свернуть чат')}
           >
             <Icon name="close" />
           </button>
         </header>
         <div className="chat-toolbar">
-          <span>Консультант по электротехнике</span>
+          <span>{t('Консультант по электротехнике')}</span>
           <button
             onClick={assistant.reset}
             disabled={
@@ -117,13 +119,13 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
               assistant.files.some((f) => f.phase === 'uploading')
             }
           >
-            Новый диалог
+            {t('Новый диалог')}
           </button>
         </div>
         {(assistant.session?.mode === 'demo' ||
           assistant.cart?.mode === 'demo') && (
           <div className="demo-banner">
-            Демо-режим · цены, остатки и корзина тестовые
+            {t('Демо-режим · цены, остатки и корзина тестовые')}
           </div>
         )}
         {/* Keyboard users must be able to scroll the transcript independently. */}
@@ -132,23 +134,24 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
           className="conversation"
           role="region"
           tabIndex={0}
-          aria-label="История диалога"
+          aria-label={t('История диалога')}
         >
           {!assistant.messages.length && (
             <div className="welcome">
               <span className="welcome-icon">
                 <Icon name="chat" size={28} />
               </span>
-              <h3>Здравствуйте! Чем помочь?</h3>
+              <h3>{t('Здравствуйте! Чем помочь?')}</h3>
               <p>
-                Найдём товар, проверим характеристики и наличие или подберём
-                альтернативу.
+                {t(
+                  'Найдём товар, проверим характеристики и наличие или подберём альтернативу.',
+                )}
               </p>
               <div className="quick-prompts">
                 {[
-                  'Проверить DEMO-C16',
-                  'Подобрать аналог DEMO-C16-OLD',
-                  'Какие условия доставки?',
+                  t('Проверить DEMO-C16'),
+                  t('Подобрать аналог DEMO-C16-OLD'),
+                  t('Какие условия доставки?'),
                 ].map((text) => (
                   <button
                     key={text}
@@ -164,25 +167,25 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                 ))}
               </div>
               <p className="welcome-tip">
-                <Icon name="paperclip" size={16} /> Можно прикрепить фото или
-                спецификацию
+                <Icon name="paperclip" size={16} />{' '}
+                {t('Можно прикрепить фото или спецификацию')}
               </p>
             </div>
           )}
           {assistant.messages.map((message) => (
             <div className="exchange" key={message.message_id}>
               <div className="user-message">
-                <span className="sr-only">Вы: </span>
-                {message.text || 'Проверьте прикреплённые файлы'}
+                <span className="sr-only">{t('Вы:')} </span>
+                {message.text || t('Проверьте прикреплённые файлы')}
                 {message.attachment_ids.length > 0 && (
                   <small>
-                    Прикреплено файлов: {message.attachment_ids.length}
+                    {t('Прикреплено файлов:')} {message.attachment_ids.length}
                   </small>
                 )}
               </div>
               <div className="assistant-message">
                 <span className="message-byline">
-                  <Icon name="bolt" size={13} /> ПОМОЩНИК ЭКТ
+                  <Icon name="bolt" size={13} /> {t('ПОМОЩНИК ЭКТ')}
                 </span>
                 {message.answer && (
                   <p className="answer-text">{message.answer}</p>
@@ -195,16 +198,16 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                 )}
                 {message.status === 'failed' && (
                   <div className="error-box">
-                    <strong>Не удалось обработать запрос</strong>
+                    <strong>{t('Не удалось обработать запрос')}</strong>
                     <p>
                       {message.error?.message ||
-                        'Проверьте файлы и отправьте новый запрос.'}
+                        t('Проверьте файлы и отправьте новый запрос.')}
                     </p>
                     <button
                       className="text-button"
                       onClick={() => setDraft(message.text)}
                     >
-                      Исправить и отправить заново
+                      {t('Исправить и отправить заново')}
                     </button>
                   </div>
                 )}
@@ -226,7 +229,7 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                   />
                 ))}
                 {!!message.alternatives?.length && (
-                  <h3 className="small-heading">Возможные аналоги</h3>
+                  <h3 className="small-heading">{t('Возможные аналоги')}</h3>
                 )}
                 {(message.alternatives || []).map((alternative, i) => (
                   <div
@@ -236,11 +239,15 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                     <p>{alternative.reason}</p>
                     <p className="compatibility">
                       {alternative.compatibility === 'verified'
-                        ? 'Совместимость подтверждена источником'
-                        : 'Совместимость не подтверждена — требуется проверка специалиста'}
+                        ? t('Совместимость подтверждена источником')
+                        : t(
+                            'Совместимость не подтверждена — требуется проверка специалиста',
+                          )}
                     </p>
                     {!!alternative.differences?.length && (
-                      <p>Отличия: {alternative.differences.join(', ')}</p>
+                      <p>
+                        {t('Отличия:')} {alternative.differences.join(', ')}
+                      </p>
                     )}
                     <ProductCard
                       product={alternative.product}
@@ -256,15 +263,19 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                 {!!message.sources?.length && (
                   <details className="sources">
                     <summary>
-                      Источники ответа ({message.sources.length})
+                      {t('Источники ответа (')}
+                      {message.sources.length})
                     </summary>
                     <ul>
                       {message.sources.map((source, i) => (
                         <li key={i}>
                           {source.kind}: {source.reference}
                           {source.observed_at &&
-                            ` · ${new Date(source.observed_at).toLocaleString('ru-RU')}`}
-                          {source.version && ` · версия ${source.version}`}
+                            ` · ${new Date(source.observed_at).toLocaleString(dateLocale)}`}
+                          {source.version &&
+                            t(' · версия {version}', {
+                              version: source.version,
+                            })}
                         </li>
                       ))}
                     </ul>
@@ -274,9 +285,14 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
             </div>
           ))}
           {!!assistant.selected.length && (
-            <section className="selection-panel" aria-label="Выбранные товары">
-              <h3>Ваш выбор · {assistant.selected.length}</h3>
-              <p>Проверьте количество. Корзина пока не изменена.</p>
+            <section
+              className="selection-panel"
+              aria-label={t('Выбранные товары')}
+            >
+              <h3>
+                {t('Ваш выбор ·')} {assistant.selected.length}
+              </h3>
+              <p>{t('Проверьте количество. Корзина пока не изменена.')}</p>
               {assistant.selected.map((item, index) => (
                 <div
                   className="selection-row"
@@ -291,7 +307,7 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                   </span>
                   <button
                     className="icon-button"
-                    aria-label={`Убрать ${item.product.sku}`}
+                    aria-label={t('Убрать {sku}', { sku: item.product.sku })}
                     disabled={assistant.busy || assistant.confirmationPending}
                     onClick={() => assistant.removeSelection(index)}
                   >
@@ -305,7 +321,7 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                   disabled={locked}
                   onClick={() => void assistant.refreshProducts()}
                 >
-                  Обновить товары и остатки
+                  {t('Обновить товары и остатки')}
                 </button>
               )}
               {!assistant.proposal && (
@@ -314,8 +330,7 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                   disabled={locked || assistant.cartUnavailable}
                   onClick={() => void assistant.prepareProposal()}
                 >
-                  Проверить предложение
-                  <Icon name="arrow" size={16} />
+                  {t('Проверить предложение')} <Icon name="arrow" size={16} />
                 </button>
               )}
             </section>
@@ -323,30 +338,30 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
           {assistant.proposal && (
             <section
               className="proposal-panel"
-              aria-label="Подтверждение добавления"
+              aria-label={t('Подтверждение добавления')}
             >
-              <h3>Проверьте перед добавлением</h3>
+              <h3>{t('Проверьте перед добавлением')}</h3>
               <QuoteRows items={assistant.proposal.items} />
               <p>
-                Действует до{' '}
-                {new Date(assistant.proposal.expires_at).toLocaleTimeString(
-                  'ru-RU',
-                )}
-                .
+                {t('Действует до {time}.', {
+                  time: new Date(
+                    assistant.proposal.expires_at,
+                  ).toLocaleTimeString(dateLocale),
+                })}
               </p>
-              <p>Только нажатие кнопки ниже изменит корзину.</p>
+              <p>{t('Только нажатие кнопки ниже изменит корзину.')}</p>
               {Date.parse(assistant.proposal.expires_at) <= assistant.now &&
               !assistant.confirmationPending ? (
                 <>
                   <p className="warning">
-                    Предложение истекло. Получите новое.
+                    {t('Предложение истекло. Получите новое.')}
                   </p>
                   <button
                     className="secondary full-width"
                     onClick={() => void assistant.prepareProposal()}
                     disabled={locked}
                   >
-                    Обновить предложение
+                    {t('Обновить предложение')}
                   </button>
                 </>
               ) : (
@@ -356,10 +371,10 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                   onClick={() => void assistant.confirm()}
                 >
                   {assistant.busy
-                    ? 'Проверяем…'
+                    ? t('Проверяем…')
                     : assistant.confirmationPending
-                      ? 'Повторить подтверждение'
-                      : 'Добавить в корзину'}
+                      ? t('Повторить подтверждение')
+                      : t('Добавить в корзину')}
                   <Icon name="cart" size={18} />
                 </button>
               )}
@@ -369,13 +384,14 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                   disabled={assistant.busy}
                   onClick={assistant.editProposal}
                 >
-                  Изменить выбор
+                  {t('Изменить выбор')}
                 </button>
               )}
               {assistant.confirmationPending && (
                 <p className="warning">
-                  Результат подтверждения пока неизвестен. Повтор проверит тот
-                  же запрос без повторного добавления.
+                  {t(
+                    'Результат подтверждения пока неизвестен. Повтор проверит тот же запрос без повторного добавления.',
+                  )}
                 </p>
               )}
             </section>
@@ -383,17 +399,17 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
           {assistant.cart && (
             <section className="cart-success" role="status">
               <Icon name="check" />
-              <strong>Добавлено в демо-корзину</strong>
+              <strong>{t('Добавлено в демо-корзину')}</strong>
               <QuoteRows items={assistant.cart.items} />
               {cartLink ? (
                 <a className="primary full-width" href={cartLink}>
-                  Открыть корзину
-                  <Icon name="arrow" size={16} />
+                  {t('Открыть корзину')} <Icon name="arrow" size={16} />
                 </a>
               ) : (
                 <p className="warning">
-                  Ссылка корзины ведёт на другой сайт. Проверьте настройку
-                  адреса фронтенда.
+                  {t(
+                    'Ссылка корзины ведёт на другой сайт. Проверьте настройку адреса фронтенда.',
+                  )}
                 </p>
               )}
             </section>
@@ -405,13 +421,16 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
             {!cooledDown && (
               <span>
                 {' '}
-                Повтор через{' '}
-                {Math.ceil((assistant.blockedUntil - assistant.now) / 1000)} с.
+                {t('Повтор через {seconds} с.', {
+                  seconds: Math.ceil(
+                    (assistant.blockedUntil - assistant.now) / 1000,
+                  ),
+                })}
               </span>
             )}
             {!assistant.session && !assistant.connecting && (
               <button className="text-button" onClick={assistant.reset}>
-                Подключиться заново
+                {t('Подключиться заново')}
               </button>
             )}
           </div>
@@ -423,8 +442,10 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
               open={selectedFiles.length > 0 || undefined}
             >
               <summary>
-                Файлы: {selectedFiles.length} выбрано · {assistant.files.length}{' '}
-                в диалоге
+                {t('Файлы: {selected} выбрано · {total} в диалоге', {
+                  selected: selectedFiles.length,
+                  total: assistant.files.length,
+                })}
               </summary>
               <div className="files-scroll">
                 {assistant.files.map((file) => (
@@ -444,22 +465,27 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                         {file.filename}
                         <small>
                           {file.phase === 'uploading'
-                            ? `Загрузка: ${file.progress}%`
+                            ? t('Загрузка: {progress}%', {
+                                progress: file.progress,
+                              })
                             : file.phase === 'failed'
                               ? file.error
                               : (
                                   {
-                                    queued: 'В очереди на обработку',
-                                    processing: 'Извлекаем содержимое…',
-                                    ready:
+                                    queued: t('В очереди на обработку'),
+                                    processing: t('Извлекаем содержимое…'),
+                                    ready: t(
                                       'Готов · можно использовать повторно',
-                                    failed: 'Ошибка обработки',
+                                    ),
+                                    failed: t('Ошибка обработки'),
                                   } as Record<string, string>
                                 )[file.attachment!.status]}
                         </small>
                         {file.phase === 'uploading' && (
                           <progress
-                            aria-label={`Загрузка ${file.filename}`}
+                            aria-label={t('Загрузка {filename}', {
+                              filename: file.filename,
+                            })}
                             value={file.progress}
                             max={100}
                           />
@@ -468,7 +494,9 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                     </label>
                     <button
                       className="icon-button"
-                      aria-label={`Удалить ${file.filename}`}
+                      aria-label={t('Удалить {filename}', {
+                        filename: file.filename,
+                      })}
                       disabled={locked || file.phase === 'uploading'}
                       onClick={() => assistant.removeFile(file.key)}
                     >
@@ -489,7 +517,7 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
           )}
           {assistant.pendingMessage && !assistant.busy && (
             <div className="pending-retry">
-              <span>Доставка сообщения не подтверждена.</span>
+              <span>{t('Доставка сообщения не подтверждена.')}</span>
               <button
                 className="secondary"
                 disabled={!cooledDown}
@@ -499,7 +527,7 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                   })
                 }
               >
-                Повторить отправку
+                {t('Повторить отправку')}
               </button>
             </div>
           )}
@@ -510,12 +538,12 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
             }}
           >
             <label htmlFor="chat-message" className="sr-only">
-              Ваше сообщение
+              {t('Ваше сообщение')}
             </label>
             <textarea
               id="chat-message"
               ref={input}
-              placeholder="Артикул или ваш вопрос…"
+              placeholder={t('Артикул или ваш вопрос…')}
               rows={2}
               value={draft}
               maxLength={16000}
@@ -535,13 +563,13 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
             <div className="composer-bottom">
               <label
                 className={`attachment-button ${locked ? 'disabled' : ''}`}
-                title="Добавить файл"
+                title={t('Добавить файл')}
               >
                 <Icon name="paperclip" />
-                <span>Файл</span>
+                <span>{t('Файл')}</span>
                 <input
                   type="file"
-                  aria-label="Прикрепить файлы"
+                  aria-label={t('Прикрепить файлы')}
                   multiple
                   accept=".xlsx,.xls,.docx,.doc,.pdf,.jpg,.jpeg,.png"
                   disabled={locked}
@@ -551,11 +579,11 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                   }}
                 />
               </label>
-              <span className="file-hint">до 10 МиБ / файл</span>
+              <span className="file-hint">{t('до 10 МиБ / файл')}</span>
               <button
                 className="send-button"
                 type="submit"
-                aria-label="Отправить сообщение"
+                aria-label={t('Отправить сообщение')}
                 disabled={!canSend}
               >
                 <Icon name="send" size={19} />
@@ -563,19 +591,19 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
             </div>
           </form>
           <p className="privacy-note">
-            Не отправляйте платёжные и личные данные.
+            {t('Не отправляйте платёжные и личные данные.')}
           </p>
         </div>
       </section>
       <button
         ref={launcher}
         className={`chat-launcher ${open ? 'is-open' : ''}`}
-        aria-label={open ? 'Свернуть помощника' : 'Открыть помощника'}
+        aria-label={open ? t('Свернуть помощника') : t('Открыть помощника')}
         aria-expanded={open}
         onClick={() => (open ? close() : setOpen(true))}
       >
         <Icon name={open ? 'close' : 'chat'} size={23} />
-        {!open && <span>Помощник ЭКТ</span>}
+        {!open && <span>{t('Помощник ЭКТ')}</span>}
       </button>
     </>
   );

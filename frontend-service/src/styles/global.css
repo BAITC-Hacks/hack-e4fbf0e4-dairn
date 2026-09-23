@@ -1508,3 +1508,43 @@ summary {
     order: 3;
   }
 }
+
+/* The language choice is independent of the chat session. */
+.utility-bar .site-container {
+  align-items: center;
+  gap: 12px;
+  padding-block: 4px;
+}
+.language-switch {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+}
+.language-switch button {
+  min-width: 40px;
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.language-switch button[aria-pressed='true'] {
+  background: white;
+  color: var(--navy);
+}
+.language-switch button:hover {
+  border-color: white;
+}
+.language-switch button:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+@media (max-width: 600px) {
+  .utility-bar .site-container > span:nth-child(3) {
+    display: none;
+  }
+}

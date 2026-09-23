@@ -1,3 +1,4 @@
+import { LanguageSwitch, useLocale } from '../i18n/LocaleProvider';
 import { lazy, Suspense, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { ChatWidget } from '../features/chat/ChatWidget';
@@ -6,33 +7,35 @@ const CartPage = lazy(() =>
     default: module.CartPage,
   })),
 );
-const categories = [
-  {
-    name: 'Кабель и провод',
-    detail: 'Для надёжных соединений',
-    type: 'cable',
-    query: 'Помогите подобрать кабель',
-  },
-  {
-    name: 'Светильники и лампы',
-    detail: 'Свет для каждого пространства',
-    type: 'lamp',
-    query: 'Помогите подобрать светильник',
-  },
-  {
-    name: 'Низковольтная аппаратура',
-    detail: 'Защита и управление',
-    type: 'breaker',
-    query: 'DEMO-C16',
-  },
-  {
-    name: 'Монтаж и инструмент',
-    detail: 'Всё для вашей работы',
-    type: 'tools',
-    query: 'Какие товары есть в каталоге?',
-  },
-];
 export function App() {
+  const { t } = useLocale();
+  const categories = [
+    {
+      name: t('Кабель и провод'),
+      detail: t('Для надёжных соединений'),
+      type: 'cable',
+      query: t('Помогите подобрать кабель'),
+    },
+    {
+      name: t('Светильники и лампы'),
+      detail: t('Свет для каждого пространства'),
+      type: 'lamp',
+      query: t('Помогите подобрать светильник'),
+    },
+    {
+      name: t('Низковольтная аппаратура'),
+      detail: t('Защита и управление'),
+      type: 'breaker',
+      query: 'DEMO-C16',
+    },
+    {
+      name: t('Монтаж и инструмент'),
+      detail: t('Всё для вашей работы'),
+      type: 'tools',
+      query: t('Какие товары есть в каталоге?'),
+    },
+  ];
+
   const [prompt, setPrompt] = useState({ text: '', id: 0 });
   const [search, setSearch] = useState('');
   const ask = (text: string) =>
@@ -41,23 +44,29 @@ export function App() {
   return (
     <>
       <a className="skip-link" href="#main">
-        Перейти к содержимому
+        {t('Перейти к содержимому')}
       </a>
       <header className="site-header">
         <div className="utility-bar">
           <div className="site-container">
-            <span>◎ Алматы</span>
-            <span>Электротехника для ваших задач</span>
-            <span>Демонстрация интерфейса</span>
+            <span>{t('◎ Алматы')}</span>
+            <span>{t('Электротехника для ваших задач')}</span>
+            <span>{t('Демонстрация интерфейса')}</span>
+            <LanguageSwitch />
           </div>
         </div>
         <div className="site-container main-header">
-          <a href="/" className="brand" aria-label="Электрокомплект — главная">
+          <a
+            href="/"
+            className="brand"
+            aria-label={t('Электрокомплект — главная')}
+          >
             <span className="brand-symbol">
               <Icon name="bolt" size={34} />
             </span>
             <span>
-              ЭЛЕКТРОКОМПЛЕКТ<small>ЭНЕРГИЯ ВАШИХ РЕШЕНИЙ</small>
+              {t('ЭЛЕКТРОКОМПЛЕКТ')}
+              <small>{t('ЭНЕРГИЯ ВАШИХ РЕШЕНИЙ')}</small>
             </span>
           </a>
           {!isCart && (
@@ -69,15 +78,18 @@ export function App() {
               }}
             >
               <label className="sr-only" htmlFor="catalog-search">
-                Поиск по каталогу
+                {t('Поиск по каталогу')}
               </label>
               <input
                 id="catalog-search"
-                placeholder="Наименование или артикул товара"
+                placeholder={t('Наименование или артикул товара')}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
-              <button type="submit" aria-label="Спросить помощника о товаре">
+              <button
+                type="submit"
+                aria-label={t('Спросить помощника о товаре')}
+              >
                 <Icon name="search" />
               </button>
             </form>
@@ -88,68 +100,69 @@ export function App() {
             target="_blank"
             rel="noreferrer"
           >
-            Сайт ЭКТ
-            <Icon name="arrow" size={16} />
+            {t('Сайт ЭКТ')} <Icon name="arrow" size={16} />
           </a>
           <a
             href="/cart"
             className="header-cart"
-            aria-label="Корзина"
+            aria-label={t('Корзина')}
             aria-current={isCart ? 'page' : undefined}
           >
             <Icon name="cart" size={22} />
-            <span>Корзина</span>
+            <span>{t('Корзина')}</span>
           </a>
         </div>
         <nav
           className="site-container site-nav"
-          aria-label="Основная навигация"
+          aria-label={t('Основная навигация')}
         >
           <a className="catalog-link" href="/#catalog">
-            <Icon name="menu" size={19} /> Каталог продукции
+            <Icon name="menu" size={19} /> {t('Каталог продукции')}
           </a>
           <a href="https://ekt.kz" target="_blank" rel="noreferrer">
-            О компании
+            {t('О компании')}
           </a>
           {!isCart && (
             <>
-              <button onClick={() => ask('Какие условия оплаты и доставки?')}>
-                Оплата и доставка
+              <button
+                onClick={() => ask(t('Какие условия оплаты и доставки?'))}
+              >
+                {t('Оплата и доставка')}
               </button>
               <button
-                onClick={() => ask('Помогите подобрать аналог DEMO-C16-OLD')}
+                onClick={() => ask(t('Помогите подобрать аналог DEMO-C16-OLD'))}
               >
-                Подбор оборудования
+                {t('Подбор оборудования')}
               </button>
             </>
           )}
-          <span>Профессионально. Надёжно. Рядом.</span>
+          <span>{t('Профессионально. Надёжно. Рядом.')}</span>
         </nav>
       </header>
       {isCart ? (
-        <Suspense fallback={<main id="main">Загружаем корзину…</main>}>
+        <Suspense fallback={<main id="main">{t('Загружаем корзину…')}</main>}>
           <CartPage />
         </Suspense>
       ) : (
         <main id="main" tabIndex={-1} className="site-container storefront">
           <section className="hero">
             <div className="hero-copy">
-              <span className="eyebrow">ЭЛЕКТРОКОМПЛЕКТ · КАЗАХСТАН</span>
+              <span className="eyebrow">
+                {t('ЭЛЕКТРОКОМПЛЕКТ · КАЗАХСТАН')}
+              </span>
               <h1>
-                Правильные решения.
-                <br />
-                <span>Надёжные соединения.</span>
+                {t('Правильные решения.')} <br />
+                <span>{t('Надёжные соединения.')}</span>
               </h1>
               <p>
-                Электротехника для дома, бизнеса
-                <br />и больших проектов.
+                {t('Электротехника для дома, бизнеса')} <br />
+                {t('и больших проектов.')}
               </p>
               <a href="#catalog" className="hero-cta">
-                Перейти в каталог
-                <Icon name="arrow" size={19} />
+                {t('Перейти в каталог')} <Icon name="arrow" size={19} />
               </a>
               <span className="hero-caption">
-                От выбора оборудования до готового решения
+                {t('От выбора оборудования до готового решения')}
               </span>
             </div>
             <div className="hero-art" aria-hidden="true">
@@ -159,7 +172,8 @@ export function App() {
               <div className="wire wire-one" />
               <div className="wire wire-two" />
               <div className="art-badge">
-                ЭКТ<span>ЭНЕРГИЯ В ДЕТАЛЯХ</span>
+                {t('ЭКТ')}
+                <span>{t('ЭНЕРГИЯ В ДЕТАЛЯХ')}</span>
               </div>
             </div>
           </section>
@@ -167,32 +181,32 @@ export function App() {
             <div>
               <span>01</span>
               <p>
-                <strong>Помощь в выборе</strong>
-                <small>Характеристики и аналоги</small>
+                <strong>{t('Помощь в выборе')}</strong>
+                <small>{t('Характеристики и аналоги')}</small>
               </p>
             </div>
             <div>
               <span>02</span>
               <p>
-                <strong>Наличие по складам</strong>
-                <small>Проверка актуальных остатков</small>
+                <strong>{t('Наличие по складам')}</strong>
+                <small>{t('Проверка актуальных остатков')}</small>
               </p>
             </div>
             <div>
               <span>03</span>
               <p>
-                <strong>Работа со спецификацией</strong>
-                <small>Прикрепите документ в чате</small>
+                <strong>{t('Работа со спецификацией')}</strong>
+                <small>{t('Прикрепите документ в чате')}</small>
               </p>
             </div>
           </div>
           <section id="catalog" className="catalog-section">
             <div className="section-title">
               <div>
-                <span className="eyebrow">ВСЁ ДЛЯ ВАШЕГО ПРОЕКТА</span>
-                <h2>Каталог продукции</h2>
+                <span className="eyebrow">{t('ВСЁ ДЛЯ ВАШЕГО ПРОЕКТА')}</span>
+                <h2>{t('Каталог продукции')}</h2>
               </div>
-              <span>Подберите товар с помощником ↗</span>
+              <span>{t('Подберите товар с помощником ↗')}</span>
             </div>
             <div className="category-grid">
               {categories.map((category) => (
@@ -230,23 +244,24 @@ export function App() {
           </section>
           <section className="help-strip">
             <div>
-              <span className="eyebrow">НАЧНИТЕ С ВОПРОСА</span>
-              <h2>Не знаете, что выбрать?</h2>
-              <p>Наш помощник разберёт артикул, фото или список товаров.</p>
+              <span className="eyebrow">{t('НАЧНИТЕ С ВОПРОСА')}</span>
+              <h2>{t('Не знаете, что выбрать?')}</h2>
+              <p>
+                {t('Наш помощник разберёт артикул, фото или список товаров.')}
+              </p>
             </div>
             <button
               className="primary"
-              onClick={() => ask('Помогите с выбором оборудования')}
+              onClick={() => ask(t('Помогите с выбором оборудования'))}
             >
-              Открыть помощника
-              <Icon name="chat" size={18} />
+              {t('Открыть помощника')} <Icon name="chat" size={18} />
             </button>
           </section>
         </main>
       )}
       <footer className="site-container site-footer">
-        <span>© Электрокомплект · HACKALEM AI</span>
-        <span>Демо-интерфейс. Реальные условия — на ekt.kz.</span>
+        <span>{t('© Электрокомплект · HACKALEM AI')}</span>
+        <span>{t('Демо-интерфейс. Реальные условия — на ekt.kz.')}</span>
       </footer>
       {!isCart && <ChatWidget prompt={prompt} />}
     </>

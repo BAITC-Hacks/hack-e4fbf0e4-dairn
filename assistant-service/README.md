@@ -25,7 +25,7 @@ Optional model generation uses the Responses API. Set both `ASSISTANT_MODEL_API_
 
 Add approved payment/delivery/minimum-order policies to `config/policies.json`. It is an array of objects with `id`, `text`, `source`, and `version`; the current empty file causes an honest unavailable-policy answer. Restart the worker after changes. Do not invent partner policies for the demo.
 
-Production configuration requires `ASSISTANT_ALLOW_DEMO_SESSIONS=false` and a nonempty `ASSISTANT_BOOTSTRAP_TOKEN`. Only a trusted website backend should know this token. The bootstrap authenticates the backend, but mapping to a real website/cart user is still a partner integration task. The current implementation is a single-host prototype, not a multi-host production deployment.
+Production configuration requires `ASSISTANT_ALLOW_DEMO_SESSIONS=false`. Users authenticate with account tokens; an optional `ASSISTANT_BOOTSTRAP_TOKEN` preserves trusted website backend integration. Only the backend should know that bootstrap token. Mapping local accounts to a real EKT website/cart identity remains a partner integration task. The current implementation is a single-host prototype, not a multi-host production deployment.
 
 ## Local development
 
@@ -72,7 +72,7 @@ Extraction begins as soon as the file is uploaded and is reused by follow-up mes
 
 ## Data and functional limits
 
-Raw uploads are deleted after extraction or failure. Extracted content, session tokens (stored as hashes), messages and proposals expire with the session, at most 24 hours by default. Tokens never belong in URLs. Basic card-like-number/IBAN filtering runs before extracted text or message text is persisted or sent to the model; this is heuristic filtering, not a complete sensitive-data classifier. Do not collect payment data.
+Raw uploads are deleted after extraction or failure. Guest conversations expire after at most 24 hours. Signed-in conversations and their messages expire 30 days after creation by default (`ASSISTANT_USER_HISTORY_TTL_DAYS`); users can delete them sooner. Attachment extraction expires after at most 24 hours in either mode; text already quoted in a chat answer follows conversation retention. Account tokens are stored as hashes, expire after 24 hours by default, and can be revoked by logout. User account records persist independently of conversations. Tokens never belong in URLs. Basic card-like-number/IBAN filtering runs before extracted text or message text is persisted or sent to the model; this is heuristic filtering, not a complete sensitive-data classifier. Do not collect payment data.
 
 Files are limited to 10 MiB, PDFs to 20 pages, spreadsheets/documents to 500 blocks/rows and 40,000 extracted characters. Excessive extraction is rejected; long individual blocks produce shortening warnings. Photos currently use OCR only, not visual object recognition. Extraction of formulas uses saved values rather than executing formulas/macros. Catalog matching is bounded and can require clarification; an entire large specification is not guaranteed to be resolved automatically.
 
@@ -91,3 +91,7 @@ docker compose -f assistant-service/compose.yaml run --rm --no-deps -T \
 ```
 
 The smoke check generates temporary documents and uses isolated temporary state. Its legacy XLS fixture is synthetic. No partner API writes or live model calls are made.
+
+## Accounts and user history
+
+See [AUTHENTICATION.md](AUTHENTICATION.md) for the account API, SQLite schema, retention and frontend flow. Registration/login return an opaque account bearer token. `POST /v1/sessions` with this token creates an owned conversation; `GET /v1/sessions` lists that user's history, and existing message endpoints accept the same token. Logging out or restarting containers does not delete history. SQLite tables are added automatically without removing existing guest data.

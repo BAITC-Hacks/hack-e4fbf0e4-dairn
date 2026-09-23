@@ -1,9 +1,22 @@
 export interface Session {
   session_id: string;
-  session_token: string;
+  session_token: string | null;
+  user_id?: string | null;
+  created_at?: string;
+  /** Account credentials are attached in memory only, never serialized. */
+  access_token?: string;
+  auth_expires_at?: string;
   expires_at: string;
   locale: string;
   mode: string;
+}
+export interface AccountCredential {
+  access_token: string;
+  expires_at: string;
+}
+export interface Conversation extends Session {
+  user_id: string;
+  created_at: string;
 }
 export interface ApiErrorBody {
   code: string;
@@ -13,7 +26,21 @@ export interface ApiErrorBody {
 }
 export interface Price {
   amount: string;
-  currency: string;
+  currency: string | null;
+}
+export interface CatalogMetadata {
+  source: string;
+  mode: string;
+  coverage: string;
+  pages: number[];
+  loadedProducts: number;
+  totalProducts: number | null;
+  observedAt: string | null;
+  loadedAt: string;
+  expiresAt: string | null;
+  freshness: string;
+  detailLevel: string;
+  fallbackReason?: string;
 }
 export interface Product {
   id: string;
@@ -23,12 +50,15 @@ export interface Product {
   attributes?: Record<string, string | number | boolean | null>;
   certificates?: { name?: string; url: string }[];
   price: Price | null;
-  unit: string;
-  quantity_step: string;
-  minimum_quantity: string;
+  unit?: string | null;
+  quantity_step?: string | null;
+  minimum_quantity?: string | null;
   stock: { warehouse_id: string; available_quantity: string | null }[];
-  availability?: string;
-  observed_at?: string;
+  availability?: string | { status: string; quantity: string | number | null };
+  images?: unknown[];
+  pageUrl?: string | null;
+  catalog_metadata?: CatalogMetadata;
+  observed_at?: string | null;
   source?: string;
   stale?: boolean;
 }
@@ -68,8 +98,9 @@ export interface Message extends MessageBody {
   sources: {
     kind: string;
     reference: string;
-    observed_at?: string;
+    observed_at?: string | null;
     version?: string;
+    metadata?: CatalogMetadata;
   }[];
   warnings: string[];
   error: ApiErrorBody | null;
@@ -87,8 +118,8 @@ export interface Quote {
   selection: Selection;
   sku: string;
   name: string;
-  unit: string;
-  price: Price;
+  unit?: string | null;
+  price: Price | null;
 }
 export interface Proposal {
   proposal_id: string;

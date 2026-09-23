@@ -1,4 +1,6 @@
 """Catalog wire envelopes supplied by the Catalog team; nullable facts stay unknown."""
+from datetime import datetime, timezone
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -18,7 +20,7 @@ class Availability(WireModel):
 
 class CatalogProduct(WireModel):
     id: str
-    sku: str
+    sku: str | None
     name: str
     price: Price | None
     images: list
@@ -50,10 +52,21 @@ class DetailResponse(WireModel):
     metadata: Metadata
 
 
+def is_stale(metadata: Metadata):
+    # RECENTLY_FETCHED describes transport freshness, not verified stock/currency.
+    if metadata.freshness not in {'RECENTLY_FETCHED', 'FRESH'} or not metadata.expiresAt:
+        return True
+    try:
+        expires_at = datetime.fromisoformat(metadata.expiresAt.replace('Z', '+00:00'))
+        return expires_at.tzinfo is None or expires_at <= datetime.now(timezone.utc)
+    except ValueError:
+        return True
+
+
 def normalize(product: CatalogProduct, metadata: Metadata):
     result = product.model_dump()
     # Keep wire fields for consumers, plus Assistant's existing internal aliases.
     result.update(stock=[], attributes={}, certificates=[], observed_at=metadata.observedAt,
                   source='synthetic' if metadata.source == 'SYNTHETIC_TEST_FIXTURE' else metadata.source,
-                  stale=metadata.freshness != 'FRESH', catalog_metadata=metadata.model_dump())
+                  stale=is_stale(metadata), catalog_metadata=metadata.model_dump())
     return result

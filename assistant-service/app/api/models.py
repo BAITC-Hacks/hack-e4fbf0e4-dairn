@@ -14,6 +14,7 @@ class SessionRequest(Model):
 
 class SessionResponse(Model):
     session_id: str
+    created_at: str
     session_token: str | None = None
     user_id: str | None = None
     expires_at: str

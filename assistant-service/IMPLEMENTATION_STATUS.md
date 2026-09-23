@@ -1,13 +1,19 @@
 # EKT implementation status
 
-Assistant currently implements **12 HTTP operations across 11 paths**. All originally planned Assistant routes exist; history, message polling and SSE were added. No additional core Assistant route is waiting to be created. Several routes still need live integration behind them.
+Assistant currently implements **18 HTTP operations across 16 paths**. All originally planned Assistant routes exist; history, message polling and SSE were added. No additional core Assistant route is waiting to be created. Several routes still need live integration behind them.
 
 ## Implemented Assistant endpoints
 
 | Method | Path | Status / limitation |
 |---|---|---|
 | GET | `/health/live` | Implemented |
-| POST | `/v1/sessions` | Demo or backend bootstrap token supported; real website identity/cart mapping is pending. |
+| POST | `/v1/auth/register` | SQLite user creation, salted password hash, account token. |
+| POST | `/v1/auth/login` | Rate-limited account login. |
+| GET | `/v1/auth/me` | Current account profile. |
+| POST | `/v1/auth/logout` | Revoke current token; history persists. |
+| GET | `/v1/sessions` | Paginated per-user conversations. |
+| DELETE | `/v1/sessions/{session_id}` | Delete owned conversation and related records. |
+| POST | `/v1/sessions` | Local accounts own persistent conversations; guest/backend bootstrap tokens remain supported. Real EKT identity/cart mapping is pending. |
 | POST | `/v1/sessions/{session_id}/attachments` | OCR for photos/scans; visual recognition beyond text is not implemented. |
 | GET | `/v1/sessions/{session_id}/attachments/{attachment_id}` | OCR for photos/scans; visual recognition beyond text is not implemented. |
 | POST | `/v1/sessions/{session_id}/messages` | Template/demo and live OpenAI generation tested; HTTP catalog remains unverified against the live provider. Policies are currently empty. |
@@ -19,7 +25,7 @@ Assistant currently implements **12 HTTP operations across 11 paths**. All origi
 | GET | `/v1/sessions/{session_id}/cart/operations/{operation_id}` | Demo adapter only. Real EKT cart integration is not implemented. Returns committed demo operations only; pending/failed upstream reconciliation is not implemented. |
 | GET | `/v1/sessions/{session_id}/cart` | Demo adapter only. Real EKT cart integration is not implemented. |
 
-`GET /docs`, `GET /redoc` and `GET /openapi.json` are FastAPI documentation routes and are not counted among the 12 business/health operations.
+`GET /docs`, `GET /redoc` and `GET /openapi.json` are FastAPI documentation routes and are not counted among the 18 business/health operations.
 
 ## Catalog provider endpoints still missing
 
@@ -65,7 +71,7 @@ Catalog tasks may appear `blocked` in generated harness state because their cont
 
 - 2026-09-23: Docker API/worker live OpenAI smoke passed with `gpt-4.1-mini`, `answer_mode: model`, 1.55-second acknowledgment and answer observed at 3.08 seconds. Single natural-language request using synthetic catalog evidence; no p95 claim.
 
-- Current verification: 16 Assistant integration tests and 11 harness tests pass.
+- Current Assistant verification: 28 integration tests pass, including account ownership, restart persistence, revocation, expiry, retention and history deletion. Earlier harness verification: 11 tests passed.
 - Earlier implementation turn: Docker HTTP/API/worker smoke passed for XLSX, XLS, DOCX, DOC, text PDF, scanned PDF, JPEG and PNG, followed by confirmed demo-cart addition.
 - Earlier Postman turn: all implemented operations covered; automatic capture, retry keys and session resets checked by executing the scripts with mocked Postman state.
 - Frontend source exists under `frontend-service/` and was preserved. Its tests and end-to-end acceptance were not run in this audit; it is not marked complete.

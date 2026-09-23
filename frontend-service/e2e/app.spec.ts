@@ -400,3 +400,173 @@ test('header cart opens the current session cart without exposing the token', as
     ),
   ).toBe(true);
 });
+
+async function switchLanguage(page: Page, language: 'ru' | 'kk') {
+  const open = await page.getByRole('dialog').isVisible();
+  if (open)
+    await page
+      .getByRole('button', { name: /^(Свернуть чат|Чатты жию)$/ })
+      .click();
+  await page
+    .getByRole('button', {
+      name: language === 'kk' ? 'Қазақша' : 'Русский',
+      exact: true,
+    })
+    .click();
+  if (open)
+    await page
+      .getByLabel(language === 'kk' ? 'Көмекшіні ашу' : 'Открыть помощника', {
+        exact: true,
+      })
+      .click();
+}
+
+test('Kazakh UI preserves drafts and API content, completes cart flow, and persists on reload', async ({
+  page,
+}) => {
+  const mock = await mockAssistant(page);
+  const sessions: unknown[] = [];
+  page.on('request', (request) => {
+    if (
+      new URL(request.url()).pathname === '/v1/sessions' &&
+      request.method() === 'POST'
+    )
+      sessions.push(request.postDataJSON());
+  });
+  await page.goto('/');
+  await expect(page.locator('#chat-message')).toBeEnabled();
+  await page.locator('#chat-message').fill('Мой исходный вопрос DEMO-C16');
+  await switchLanguage(page, 'kk');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'kk');
+  await expect(
+    page.getByRole('button', { name: 'Қазақша', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(
+    page.getByRole('heading', { name: 'ЭКТ көмекшісі' }),
+  ).toBeVisible();
+  await expect(page.locator('#chat-message')).toHaveValue(
+    'Мой исходный вопрос DEMO-C16',
+  );
+  await expect(
+    page.getByRole('button', { name: 'DEMO-C16 тексеру', exact: true }),
+  ).toBeVisible();
+  expect(sessions).toEqual([{ locale: 'ru' }]);
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.getByLabel('Файлдарды тіркеу').setInputFiles({
+    name: 'unsupported.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('test'),
+  });
+  await expect(page.getByRole('alert')).toContainText(
+    'Бос файлдар қабылданбайды.',
+  );
+  await switchLanguage(page, 'ru');
+  await expect(page.getByRole('alert')).toContainText(
+    'Пустые файлы не принимаются.',
+  );
+  await switchLanguage(page, 'kk');
+  await page
+    .getByRole('button', { name: 'Хабарлама жіберу', exact: true })
+    .click();
+  await expect(page.getByText('Нашли товар по вашему запросу.')).toBeVisible();
+  await expect(
+    page.getByText('Демонстрационные данные. Проверьте выбор.'),
+  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: product.name })).toBeVisible();
+  expect(mock.received[0].text).toBe('Мой исходный вопрос DEMO-C16');
+  await page.getByLabel('Саны, шт').fill('2');
+  await page.getByRole('button', { name: '2 шт таңдау', exact: true }).click();
+  await page.getByRole('button', { name: 'Ұсынысты тексеру' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Себетке қосу', exact: true }),
+  ).toBeVisible();
+  await switchLanguage(page, 'ru');
+  await expect(
+    page.getByRole('button', { name: 'Добавить в корзину', exact: true }),
+  ).toBeVisible();
+  await switchLanguage(page, 'kk');
+  expect(mock.confirmations).toHaveLength(0);
+  await page.getByRole('button', { name: 'Себетке қосу', exact: true }).click();
+  await page.getByRole('link', { name: 'Себетті ашу' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Демо-себетіңіз' }),
+  ).toBeVisible();
+  await expect(page.getByText(product.name)).toBeVisible();
+  await expect(page.getByText('2 шт × 1500 KZT / шт')).toBeVisible();
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'kk');
+  await expect(page.getByText('2 шт × 1500 KZT / шт')).toBeVisible();
+  await expect(page).toHaveTitle('Электрокомплект · Чат-көмекші');
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  expect(mock.confirmations).toHaveLength(1);
+  expect(sessions).toEqual([{ locale: 'ru' }]);
+  await page.getByRole('link', { name: '← Көмекшіге оралу' }).click();
+  await expect(page.getByText('Нашли товар по вашему запросу.')).toBeVisible();
+  await page.getByRole('button', { name: 'Чатты жию', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(
+    'Дұрыс шешімдер.',
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test('Kazakh interface leaves API error messages unchanged', async ({
+  page,
+}) => {
+  await mockAssistant(page, { failedMessage: true });
+  await page.goto('/');
+  await expect(page.locator('#chat-message')).toBeEnabled();
+  await switchLanguage(page, 'kk');
+  await page.locator('#chat-message').fill('DEMO-C16');
+  await page
+    .getByRole('button', { name: 'Хабарлама жіберу', exact: true })
+    .click();
+  await expect(
+    page.getByText('Файл не содержит читаемого текста'),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Түзетіп, қайта жіберу' }),
+  ).toBeVisible();
+});
+
+test('language switching works when preference storage is unavailable', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const getItem = Storage.prototype.getItem;
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.getItem = function (key) {
+      if (key === 'ekt-interface-language')
+        throw new DOMException('Blocked', 'SecurityError');
+      return getItem.call(this, key);
+    };
+    Storage.prototype.setItem = function (key, value) {
+      if (key === 'ekt-interface-language')
+        throw new DOMException('Blocked', 'SecurityError');
+      return setItem.call(this, key, value);
+    };
+  });
+  await mockAssistant(page);
+  await page.goto('/');
+  await expect(page.locator('#chat-message')).toBeEnabled();
+  await switchLanguage(page, 'kk');
+  await expect(
+    page.getByRole('heading', { name: 'ЭКТ көмекшісі' }),
+  ).toBeVisible();
+  await expect(page.locator('#chat-message')).toBeEnabled();
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
+});

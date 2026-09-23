@@ -33,3 +33,14 @@ RUN mkdir -p node_modules/.vite-temp && chown -R node:node node_modules/.vite-te
 USER node
 EXPOSE 4173
 CMD ["npm", "run", "preview"]
+
+FROM source AS production-build
+RUN npm run build
+
+FROM nginx:stable-alpine AS production
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY --from=production-build /app/dist /usr/share/nginx/html
+USER nginx
+EXPOSE 8080
+ENTRYPOINT ["nginx"]
+CMD ["-g", "daemon off;"]

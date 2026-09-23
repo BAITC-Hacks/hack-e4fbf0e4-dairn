@@ -19,3 +19,4 @@
 !docker-compose.yml
 
 !README.md
+!nginx.conf

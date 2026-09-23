@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from pydantic import ValidationError
@@ -15,6 +16,23 @@ from app.storage.store import dump
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
+
+
+class CatalogResults(list):
+    """Products with request-local provenance, including searches with no matches."""
+
+    def __init__(self, products, metadata):
+        super().__init__(products)
+        self.metadata = metadata
+
+
+def normalize_search_query(query):
+    query = ' '.join(re.sub(r'[\x00-\x1f\x7f-\x9f]', ' ', query).split())
+    # Kotlin String.length counts UTF-16 code units; avoid splitting a surrogate pair.
+    query = query.encode('utf-16-le')[:400].decode('utf-16-le', errors='ignore').rstrip()
+    if not query:
+        raise DomainError(400, 'invalid_catalog_query', 'Catalog search requires a nonempty query')
+    return query
 
 
 def product(id, sku, name, stock, price):
@@ -62,6 +80,14 @@ class Catalog:
             async with self.semaphore:
                 response = await self.client.request(method, path, **kwargs)
             if response.status_code == 404:
+                try:
+                    payload = response.json()
+                except ValueError:
+                    payload = None
+                error = payload.get('error') if isinstance(payload, dict) else None
+                if isinstance(error, dict) and error.get('code') == 'PRODUCT_NOT_IN_LOADED_SAMPLE':
+                    raise DomainError(404, 'product_not_in_loaded_sample',
+                        'Product is not in the loaded sample; existence in the full catalog is unknown')
                 raise DomainError(404, 'product_not_found', 'Product not found')
             response.raise_for_status()
             return response.json()
@@ -99,12 +125,13 @@ class Catalog:
 
     async def search(self, query):
         if self.settings.catalog_mode == 'http':
-            data = await self.request('GET', 'api/catalog/products', params={'query': query})
+            data = await self.request('GET', 'api/catalog/products', params={'query': normalize_search_query(query)})
             try:
                 response = SearchResponse.model_validate(data)
             except ValidationError as exc:
                 raise DomainError(503, 'catalog_schema', 'Invalid catalog search response') from exc
-            return [normalize(p, response.metadata) for p in response.items[:5]]
+            return CatalogResults([normalize(p, response.metadata) for p in response.items[:5]],
+                                  response.metadata.model_dump())
         words = query.lower().split()
         products = self.demo_products()
         exact = [p for p in products if p['sku'].lower() in query.lower() or p['id'] == query]

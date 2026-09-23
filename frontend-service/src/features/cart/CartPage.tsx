@@ -1,6 +1,8 @@
+import { useLocale } from '../../i18n/LocaleProvider';
 import { useEffect, useState } from 'react';
 import {
   ApiError,
+  InterfaceError,
   errorText,
   forgetSession,
   readSession,
@@ -10,8 +12,9 @@ import {
 import type { Cart } from '../../api/types';
 import { QuoteRows } from './QuoteRows';
 export function CartPage() {
+  const { t } = useLocale();
   const [cart, setCart] = useState<Cart | null>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<unknown>(null);
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     const abort = new AbortController();
@@ -22,7 +25,7 @@ export function CartPage() {
     async function load() {
       try {
         if (!session || (expected !== null && session.session_id !== expected))
-          throw new Error(
+          throw new InterfaceError(
             'Эта корзина недоступна в текущей вкладке. Вернитесь в чат и откройте ссылку из своей сессии.',
           );
         const result = await request<Cart>(
@@ -40,11 +43,7 @@ export function CartPage() {
             forgetSession();
             setCart(null);
           }
-          setError(
-            cause instanceof ApiError
-              ? errorText(cause)
-              : (cause as Error).message,
-          );
+          setError(cause);
         }
       }
     }
@@ -53,35 +52,38 @@ export function CartPage() {
   }, [revision]);
   return (
     <main id="main" className="cart-page">
-      <a href="/">← Вернуться к помощнику</a>
-      <span className="eyebrow">Электрокомплект / Помощник</span>
-      <h1>Ваша демо-корзина</h1>
+      <a href="/">{t('← Вернуться к помощнику')}</a>
+      <span className="eyebrow">{t('Электрокомплект / Помощник')}</span>
+      <h1>{t('Ваша демо-корзина')}</h1>
       <p className="demo-banner">
-        Демонстрация. Это не заказ и не корзина сайта ekt.kz. Оплата здесь не
-        принимается.
+        {t(
+          'Демонстрация. Это не заказ и не корзина сайта ekt.kz. Оплата здесь не принимается.',
+        )}
       </p>
-      {error && (
+      {!!error && (
         <p role="alert" className="error-box">
-          {error}
+          {errorText(error, t)}
         </p>
       )}
       {cart ? (
         <>
-          <p>Версия корзины: {cart.version}</p>
+          <p>
+            {t('Версия корзины:')} {cart.version}
+          </p>
           {cart.items.length ? (
             <QuoteRows items={cart.items} />
           ) : (
-            <p>В корзине пока нет товаров.</p>
+            <p>{t('В корзине пока нет товаров.')}</p>
           )}
         </>
       ) : (
-        !error && <p role="status">Загружаем корзину…</p>
+        !error && <p role="status">{t('Загружаем корзину…')}</p>
       )}
       <button
         className="secondary"
         onClick={() => setRevision((value) => value + 1)}
       >
-        Обновить корзину
+        {t('Обновить корзину')}
       </button>
     </main>
   );

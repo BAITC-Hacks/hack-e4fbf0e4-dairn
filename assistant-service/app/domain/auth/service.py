@@ -4,6 +4,9 @@ import hmac
 import secrets
 import sqlite3
 import time
+import threading
+
+_PASSWORD_WORKERS = threading.BoundedSemaphore(2)
 
 from app.core.errors import DomainError
 from app.domain.cart.service import digest, iso
@@ -12,8 +15,9 @@ from app.storage.store import uid
 
 def password_hash(password, salt=None):
     salt = salt or secrets.token_hex(16)
-    hashed = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt), n=2**17,
-                            r=8, p=1, maxmem=256*1024*1024, dklen=32).hex()
+    with _PASSWORD_WORKERS:
+        hashed = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt), n=2**17,
+                                r=8, p=1, maxmem=256*1024*1024, dklen=32).hex()
     return f'scrypt${salt}${hashed}'
 
 

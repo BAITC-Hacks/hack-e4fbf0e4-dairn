@@ -1,9 +1,61 @@
+import { useLocale } from '../../i18n/LocaleProvider';
+import { translators, type Translate } from '../../i18n/messages';
 import { useId, useState } from 'react';
-import type { Product, Selection, Price } from '../../api/types';
+import type {
+  CatalogMetadata,
+  Product,
+  Selection,
+  Price,
+} from '../../api/types';
 import { safeLink } from '../../api/client';
 import { Icon } from '../../components/Icon';
-export function priceText(price: Price | null | undefined) {
-  return price ? `${price.amount} ${price.currency}` : 'Цена неизвестна';
+export function priceText(
+  price: Price | null | undefined,
+  t: Translate = translators.ru,
+) {
+  return price
+    ? `${price.amount} ${price.currency || `(${t('Валюта неизвестна')})`}`
+    : t('Цена неизвестна');
+}
+
+export function CatalogMetadataDetails({
+  metadata,
+}: {
+  metadata: CatalogMetadata;
+}) {
+  const { t, dateLocale } = useLocale();
+  const timestamp = (value: string | null) => {
+    if (!value) return t('Неизвестно');
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? value
+      : date.toLocaleString(dateLocale);
+  };
+  const rows = [
+    [t('Источник каталога'), metadata.source],
+    [t('Режим данных'), metadata.mode],
+    [t('Полнота каталога'), metadata.coverage],
+    [t('Актуальность данных'), metadata.freshness],
+    [t('Уровень детализации'), metadata.detailLevel],
+    [t('Загружено товаров'), metadata.loadedProducts],
+    [t('Всего товаров'), metadata.totalProducts ?? t('Неизвестно')],
+    [t('Загруженные страницы'), metadata.pages.join(', ') || t('Неизвестно')],
+    [t('Данные наблюдались'), timestamp(metadata.observedAt)],
+    [t('Снимок загружен'), timestamp(metadata.loadedAt)],
+    [t('Срок актуальности'), timestamp(metadata.expiresAt)],
+  ];
+  if (metadata.fallbackReason)
+    rows.push([t('Причина резервного источника'), metadata.fallbackReason]);
+  return (
+    <dl className="catalog-metadata">
+      {rows.map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
 export function validQuantity(
   quantity: string,
@@ -52,6 +104,7 @@ interface ProductCardProps {
   onSelect: (product: Product, selection: Selection) => void;
 }
 export function ProductCard({ product, disabled, onSelect }: ProductCardProps) {
+  const { t, dateLocale } = useLocale();
   const id = useId();
   const [warehouse, setWarehouse] = useState(
     product.stock?.find(
@@ -60,8 +113,13 @@ export function ProductCard({ product, disabled, onSelect }: ProductCardProps) {
       product.stock?.[0]?.warehouse_id ||
       '',
   );
-  const [quantity, setQuantity] = useState(product.minimum_quantity || '1');
+  const [quantity, setQuantity] = useState(product.minimum_quantity || '');
   const valid = validQuantity(quantity, product, warehouse);
+  const metadata = product.catalog_metadata;
+  const unit = product.unit || t('Единица измерения неизвестна');
+  const productUrl = product.pageUrl
+    ? safeLink(product.pageUrl, 'product')
+    : null;
   return (
     <article className="product-card">
       <div className="product-top">
@@ -73,53 +131,90 @@ export function ProductCard({ product, disabled, onSelect }: ProductCardProps) {
           <h4>{product.name}</h4>
         </div>
       </div>
-      {product.source === 'synthetic' && (
-        <span className="data-tag">Демо-товар · синтетические данные</span>
+      {(product.source === 'synthetic' ||
+        metadata?.source === 'SYNTHETIC_TEST_FIXTURE') && (
+        <span className="data-tag">
+          {t('Демо-товар · синтетические данные')}
+        </span>
       )}
       <p className="product-price">
-        {priceText(product.price)} <small>/ {product.unit}</small>
+        {priceText(product.price, t)}{' '}
+        <small>{product.unit ? `/ ${product.unit}` : unit}</small>
       </p>
-      {product.stale && (
+      {metadata?.coverage === 'PARTIAL' && (
         <p className="warning">
-          Данные устарели. Обновите товар перед выбором.
+          {t('Каталог загружен частично. Показаны только доступные данные.')}
+        </p>
+      )}
+      {metadata && metadata.freshness !== 'FRESH' && (
+        <p className="warning">{t('Актуальность данных не подтверждена.')}</p>
+      )}
+      {!metadata && product.stale && (
+        <p className="warning">
+          {t('Данные устарели. Обновите товар перед выбором.')}
         </p>
       )}
       <details>
-        <summary>Характеристики и наличие</summary>
+        <summary>{t('Характеристики и наличие')}</summary>
+        {metadata && <CatalogMetadataDetails metadata={metadata} />}
+        {!Object.keys(product.attributes || {}).length && (
+          <p>{t('Характеристики не предоставлены.')}</p>
+        )}
         <dl>
           {Object.entries(product.attributes || {}).map(([key, value]) => (
             <div key={key}>
               <dt>
                 {(
                   {
-                    rated_current: 'Номинальный ток',
-                    poles: 'Полюса',
-                    curve: 'Характеристика',
+                    rated_current: t('Номинальный ток'),
+                    poles: t('Полюса'),
+                    curve: t('Характеристика'),
                   } as Record<string, string>
                 )[key] || key}
               </dt>
-              <dd>{value === null ? 'Неизвестно' : String(value)}</dd>
+              <dd>{value === null ? t('Неизвестно') : String(value)}</dd>
             </div>
           ))}
         </dl>
+        {product.availability && (
+          <p>
+            {t('Наличие:')}{' '}
+            {typeof product.availability === 'string'
+              ? product.availability
+              : product.availability.status}
+          </p>
+        )}
+        {typeof product.availability === 'object' && (
+          <p>
+            {t('Количество по каталогу:')}{' '}
+            {product.availability.quantity === null
+              ? t('Остаток неизвестен')
+              : `${product.availability.quantity} ${unit}`}
+          </p>
+        )}
         {product.stock?.length ? (
           product.stock.map((stock) => (
             <p key={stock.warehouse_id}>
               {stock.warehouse_id}:{' '}
               {stock.available_quantity === null
-                ? 'Остаток неизвестен'
-                : `${stock.available_quantity} ${product.unit}`}
+                ? t('Остаток неизвестен')
+                : `${stock.available_quantity} ${unit}`}
             </p>
           ))
         ) : (
-          <p>Остатки неизвестны</p>
+          <p>{t('Остатки неизвестны')}</p>
         )}
-        <small>
-          Обновлено:{' '}
-          {product.observed_at
-            ? new Date(product.observed_at).toLocaleString('ru-RU')
-            : 'неизвестно'}
-        </small>
+        {!metadata && (
+          <small>
+            {t('Обновлено:')}{' '}
+            {product.observed_at
+              ? new Date(product.observed_at).toLocaleString(dateLocale)
+              : t('неизвестно')}
+          </small>
+        )}
+        {!product.certificates?.length && (
+          <p>{t('Сведения о сертификатах не предоставлены.')}</p>
+        )}
         {(product.certificates || []).map((certificate, index) => {
           const url = safeLink(certificate.url, 'certificate');
           return url ? (
@@ -130,70 +225,109 @@ export function ProductCard({ product, disabled, onSelect }: ProductCardProps) {
               target="_blank"
               rel="noreferrer"
             >
-              {certificate.name || 'Сертификат'} ↗
+              {certificate.name || t('Сертификат')} ↗
             </a>
           ) : (
             <p key={index}>
-              Ссылка на сертификат недоступна: источник не подтверждён.
+              {t('Ссылка на сертификат недоступна: источник не подтверждён.')}
             </p>
           );
         })}
       </details>
-      <div className="product-selection">
-        <label htmlFor={`${id}-warehouse`}>
-          Склад
-          <select
-            id={`${id}-warehouse`}
-            value={warehouse}
-            onChange={(event) => setWarehouse(event.target.value)}
-            disabled={disabled}
+      {productUrl ? (
+        <a
+          className="certificate"
+          href={productUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {t('Открыть товар на сайте')} ↗
+        </a>
+      ) : metadata ? (
+        <p>
+          {product.pageUrl
+            ? t('Ссылка на товар недоступна: источник не подтверждён.')
+            : t('Ссылка на товар не предоставлена.')}
+        </p>
+      ) : null}
+      {metadata ? (
+        <>
+          <p className="warning" id={`${id}-cart-unavailable`}>
+            {t('Корзина партнёра ещё не подключена. Добавление недоступно.')}
+          </p>
+          <button
+            className="secondary full-width"
+            disabled
+            aria-describedby={`${id}-cart-unavailable`}
           >
-            <option value="" disabled>
-              Выберите склад
-            </option>
-            {product.stock?.map((s) => (
-              <option key={s.warehouse_id} value={s.warehouse_id}>
-                {s.warehouse_id === 'demo-almaty'
-                  ? 'Алматы · демо'
-                  : s.warehouse_id}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label htmlFor={`${id}-quantity`}>
-          Количество, {product.unit}
-          <input
-            id={`${id}-quantity`}
-            inputMode="decimal"
-            value={quantity}
-            onChange={(event) =>
-              setQuantity(event.target.value.replace(',', '.'))
+            {t('Добавление недоступно')}
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="product-selection">
+            <label htmlFor={`${id}-warehouse`}>
+              {t('Склад')}{' '}
+              <select
+                id={`${id}-warehouse`}
+                value={warehouse}
+                onChange={(event) => setWarehouse(event.target.value)}
+                disabled={disabled}
+              >
+                <option value="" disabled>
+                  {t('Выберите склад')}
+                </option>
+                {product.stock?.map((s) => (
+                  <option key={s.warehouse_id} value={s.warehouse_id}>
+                    {s.warehouse_id === 'demo-almaty'
+                      ? t('Алматы · демо')
+                      : s.warehouse_id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor={`${id}-quantity`}>
+              {t('Количество,')} {unit}
+              <input
+                id={`${id}-quantity`}
+                inputMode="decimal"
+                value={quantity}
+                onChange={(event) =>
+                  setQuantity(event.target.value.replace(',', '.'))
+                }
+                aria-describedby={`${id}-limits`}
+                disabled={disabled}
+                maxLength={30}
+              />
+            </label>
+          </div>
+          <small id={`${id}-limits`}>
+            {t('Мин.')} {product.minimum_quantity || t('неизвестно')}{' '}
+            {t('· шаг')} {product.quantity_step || t('неизвестен')}
+            {!valid && <> {t('· проверьте количество и остаток')}</>}
+          </small>
+          <button
+            className="secondary full-width"
+            disabled={
+              disabled ||
+              !valid ||
+              !product.price?.currency ||
+              !product.unit ||
+              product.stale
             }
-            aria-describedby={`${id}-limits`}
-            disabled={disabled}
-            maxLength={30}
-          />
-        </label>
-      </div>
-      <small id={`${id}-limits`}>
-        Мин. {product.minimum_quantity || 'неизвестно'} · шаг{' '}
-        {product.quantity_step || 'неизвестен'}
-        {!valid && ' · проверьте количество и остаток'}
-      </small>
-      <button
-        className="secondary full-width"
-        disabled={disabled || !valid || !product.price || product.stale}
-        onClick={() =>
-          onSelect(product, {
-            product_id: product.id,
-            warehouse_id: warehouse,
-            quantity,
-          })
-        }
-      >
-        Выбрать {quantity} {product.unit}
-        <Icon name="check" size={16} />
-      </button>
+            onClick={() =>
+              onSelect(product, {
+                product_id: product.id,
+                warehouse_id: warehouse,
+                quantity,
+              })
+            }
+          >
+            {t('Выбрать {quantity} {unit}', { quantity, unit })}
+            <Icon name="check" size={16} />
+          </button>
+        </>
+      )}
     </article>
   );
 }

@@ -5,7 +5,7 @@ Hackathon team repository for DAIRN: EKT website assistant.
 
 Start with the [developer handoff](docs/developer-handoff.md), [architecture](docs/architecture.md), [complete case brief](hackathon-task.json), and [application task plan](planning/ekt-plan.json).
 
-The proposed application has two backend services: catalog integration/search and assistant/chat/cart orchestration. The chat widget is a frontend client. The React frontend scaffold is self-contained in `frontend-service/`. The existing `docker-compose.yml` runs harness tooling; `frontend-service/docker-compose.yml` runs the independent frontend preview and checks.
+The proposed application has two backend services: catalog integration/search and assistant/chat/cart orchestration. The chat widget is a frontend client. The React frontend scaffold is self-contained in `frontend-service/`. The root `docker-compose.yml` runs all three microservices plus the assistant worker on a shared Docker network. See [Ubuntu deployment](deploy.md) for required `.env` values, published ports and startup commands. `frontend-service/docker-compose.yml` runs the independent frontend preview and checks.
 
 **Planning and contract workflow**
 

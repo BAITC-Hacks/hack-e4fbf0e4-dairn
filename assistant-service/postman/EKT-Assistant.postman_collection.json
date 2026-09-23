@@ -3,7 +3,7 @@
     "_postman_id": "9c2bcd21-169f-43d3-99d9-4a3d67cca26d",
     "name": "EKT Assistant — Local API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "All 12 business/health operations plus attachment-message example and API schema. No environment file needed: collection variables capture tokens and IDs automatically. Start with Create session. Select your own file for Upload. Cart confirmation modifies synthetic demo inventory; send it only after reviewing the proposal. Use individual requests/folders rather than blindly running the whole collection. Message/confirmation retry keys persist until their payload changes. SSE emits snapshots, not token deltas. Local API defaults to http://localhost:8000."
+    "description": "All 18 business/health operations plus attachment-message example and API schema. No environment file needed: collection variables capture tokens and IDs automatically. Start with Create session. Select your own file for Upload. Cart confirmation modifies synthetic demo inventory; send it only after reviewing the proposal. Use individual requests/folders rather than blindly running the whole collection. Message/confirmation retry keys persist until their payload changes. SSE emits snapshots, not token deltas. Local API defaults to http://localhost:8000. Account/history folder supports registration, login, owned conversations and logout; configure username/password variables locally. Do not export populated credentials."
   },
   "auth": {
     "type": "bearer",
@@ -128,6 +128,31 @@
     },
     {
       "key": "_confirmation_signature",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "display_name",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
       "value": "",
       "type": "string"
     }
@@ -630,6 +655,250 @@
             }
           },
           "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 — Accounts and user history",
+      "item": [
+        {
+          "name": "Register — set username, password and display_name locally",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/auth/register",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"display_name\": \"{{display_name}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200,201].includes(pm.response.code)) {",
+                  " const d = pm.response.json();",
+                  " pm.collectionVariables.set('access_token',d.access_token);",
+                  " pm.collectionVariables.set('user_id',d.user.user_id);",
+                  " pm.collectionVariables.set('session_token',d.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login — captures account token",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/auth/login",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200,201].includes(pm.response.code)) {",
+                  " const d = pm.response.json();",
+                  " pm.collectionVariables.set('access_token',d.access_token);",
+                  " pm.collectionVariables.set('user_id',d.user.user_id);",
+                  " pm.collectionVariables.set('session_token',d.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Current user",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/v1/auth/me",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create owned conversation — then use Chat and Attachment folders",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/sessions",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locale\": \"ru\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  " const d = pm.response.json();",
+                  " pm.collectionVariables.set('session_id',d.session_id);",
+                  " pm.collectionVariables.set('session_token',pm.collectionVariables.get('access_token'));",
+                  " [\"attachment_id\",\"attachment_status\",\"message_id\",\"message_status\",\"proposal_id\",\"proposal_version\",\"confirmation_token\",\"operation_id\",\"cart_url\",\"text_client_message_id\",\"attachment_client_message_id\",\"confirmation_key\",\"_text_signature\",\"_attachment_signature\",\"_confirmation_signature\"].forEach(k=>pm.collectionVariables.set(k,''));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List my conversations",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/v1/sessions?limit=50&offset=0",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Read selected conversation history",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/v1/sessions/{{session_id}}/messages?limit=50&offset=0",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete selected conversation — irreversible, review first",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/v1/sessions/{{session_id}}",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout — keeps server history",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/auth/logout",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 204) { ['access_token','user_id','session_token','session_id'].forEach(k=>pm.collectionVariables.set(k,'')); }"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

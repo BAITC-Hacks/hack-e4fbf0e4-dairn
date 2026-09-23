@@ -69,3 +69,23 @@ Automated accessibility checks are a baseline, not a full audit. Lighthouse CI a
 Implementation follows the supplied [React standards](react-standards.md) and [backend frontend contract](../assistant-service/FRONTEND_AGENT.md). Companion references mentioned in the supplied skill were not attached.
 
 Live model verification is recorded in [LIVE_TEST_REPORT.md](LIVE_TEST_REPORT.md).
+
+### Interface languages
+
+The header RU/KZ switch selects Russian or Kazakh for all frontend copy,
+including the storefront, chat, cart, accessibility labels, validation, and
+status messages. Kazakh uses the standard language code `kk` (`kk-KZ` for
+date formatting). The preference is stored in `localStorage` under
+`ekt-interface-language`; Russian is the default. If storage is blocked,
+switching still works for the current page.
+
+Switching does not reset the session, draft, selected products, or pending
+confirmation. Session credentials remain in `sessionStorage`. API replies,
+product names, attribute values, quantities, units, prices, source content,
+and server-provided warnings/errors are rendered as supplied. UI explanations
+for known error codes are localized. The backend currently accepts only
+`locale: "ru"`, so the interface language does not change that API contract.
+
+Translations live in `src/i18n/messages.ts`; Russian source strings are typed
+keys with a Kazakh translation for every key. Translate frontend copy only,
+never arbitrary API or user text.

@@ -32,7 +32,7 @@ Create a session with `POST /v1/sessions`, JSON `{"locale":"ru"}`. Only Russian 
 
 Every session-scoped request requires `Authorization: Bearer <session_token>`. Never put tokens in URLs. Keep the token in memory; if page navigation/reload is required for the demo, sessionStorage can retain it within the browser tab. Clear it on session expiry. Do not use a token from one session with another session ID.
 
-For authenticated deployments, session creation must go through a trusted website backend/BFF that supplies the bootstrap credential and returns the newly issued session token. **Never embed `ASSISTANT_BOOTSTRAP_TOKEN` in browser code.** The current bootstrap is backend-to-backend authentication; mapping to the real website user's cart remains a future partner integration. Demo sessions are disabled by production configuration.
+For signed-in users, register/login with the account endpoints and use the returned `access_token` for session creation and every request in the owned conversation. `session_token` is null for these conversations. The existing trusted website backend/BFF bootstrap flow remains available separately. **Never embed `ASSISTANT_BOOTSTRAP_TOKEN` in browser code.** The current bootstrap is backend-to-backend authentication; mapping to the real website user's cart remains a future partner integration. Demo sessions are disabled by production configuration.
 
 Below, `S` means `/v1/sessions/{session_id}`.
 
@@ -90,7 +90,7 @@ Accepted files: `.xlsx`, `.xls`, `.docx`, `.doc`, `.pdf`, `.jpg`, `.jpeg`, `.png
 
 Limits: 10 MiB/file, 10 attachments/message, 20 attachments/session, 20 PDF pages, 500 extracted blocks/rows and 40,000 extracted characters. Oversized or unprocessable documents fail explicitly. Individual long blocks are shortened with a warning. There is no universal support for arbitrary “other” formats. Password-protected documents and unsupported macros are rejected.
 
-Attachment response fields: `attachment_id`, `filename`, `media_type`, `status`, `expires_at`, `warnings`, `blocks_count`, and `error`. Status sequence: `queued → processing → ready | failed`. Raw files are deleted after processing, including failures. Extracted text is retained only for the session (at most 24 hours by default). Do not solicit payment data or include it in uploads.
+Attachment response fields: `attachment_id`, `filename`, `media_type`, `status`, `expires_at`, `warnings`, `blocks_count`, and `error`. Status sequence: `queued → processing → ready | failed`. Raw files are deleted after processing, including failures. Extracted text expires after at most 24 hours, including for signed-in users whose chat messages have a longer retention. Text quoted into answers follows chat retention. Do not solicit payment data or include it in uploads.
 
 ## Messages, retries and history
 
@@ -253,3 +253,18 @@ Certificate and cart links should allow only HTTP(S) and expected origins. Never
 In HTTP Catalog mode, message `products` preserve Catalog fields: `price` may be null; `price.currency`, `pageUrl`, and `availability.quantity` may be null; `availability` is an object `{status, quantity}`. Legacy standalone demo mode still uses a string for `availability`. Render unknown values as unknown, never zero/free/in stock. Images may be empty.
 
 Products include `catalog_metadata` with source, coverage, freshness, timestamps and detail level. Source entries also include this metadata. `stock`, `attributes`, and `certificates` remain empty when the list-summary contract provides none. Preserve user-visible warnings about partial coverage and unknown freshness. `source: synthetic` plus metadata `source: SYNTHETIC_TEST_FIXTURE` identifies offline fixtures, not partner inventory. Real cart actions remain disabled in HTTP mode, including during fallback.
+
+
+## Accounts and persistent conversation list
+
+See [AUTHENTICATION.md](AUTHENTICATION.md) for complete request examples. Add register/login/logout screens and a conversation list:
+
+1. `POST /v1/auth/register` or `/v1/auth/login` returns `{access_token, token_type, expires_at, user}`. Keep account tokens in memory; do not put them in URLs or logs.
+2. `GET /v1/auth/me` restores current user details when a token is available. On 401, clear the token and ask the user to sign in again.
+3. `GET /v1/sessions?limit=50&offset=0` lists only that user's conversations, newest first.
+4. Select an existing `session_id`, or create a conversation with authenticated `POST /v1/sessions`. Its `session_token` is null: continue using the account access token for uploads, messages, SSE and cart routes.
+5. `GET /v1/sessions/{session_id}/messages?limit=50&offset=0` returns the newest page in chronological order. Increase offset by the page size to get older messages; prepend them and deduplicate by `message_id`. Offset pages can shift when new messages arrive. History is retained for 30 days by default, anchored to conversation creation.
+6. `POST /v1/auth/logout` revokes the current token; clear local account/chat state. History remains on the server for the next login.
+7. `DELETE /v1/sessions/{session_id}` permanently deletes an owned conversation and related records. Present a confirmation before sending this request.
+
+Guest sessions are not automatically claimed at login. They retain their separate session-token flow. Local account identity is not proof of a real EKT website/cart identity. No frontend implementation is included in this backend change.

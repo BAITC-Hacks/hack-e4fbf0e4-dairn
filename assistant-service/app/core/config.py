@@ -37,8 +37,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode='after')
     def validate_modes(self):
-        if self.environment == 'production' and (self.allow_demo_sessions or not self.bootstrap_token):
-            raise ValueError('Production requires bootstrap authentication and disabled demo sessions')
+        if self.environment == 'production' and self.allow_demo_sessions:
+            raise ValueError('Production requires disabled demo sessions; use account authentication or optional backend bootstrap')
         if self.environment == 'production' and self.catalog_mock_on_unavailable:
             raise ValueError('Synthetic catalog fallback is for development/test only')
         if self.catalog_mode == 'http' and self.cart_mode == 'demo':
