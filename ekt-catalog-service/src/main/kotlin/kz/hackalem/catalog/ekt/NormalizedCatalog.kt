@@ -14,7 +14,11 @@ import kz.hackalem.catalog.model.*
 import kz.hackalem.catalog.normalization.EktListNormalizer
 
 /** Reusable #2 integration boundary: consumers see only normalized products and provenance. */
-fun interface NormalizedCatalog { suspend fun snapshot(): CatalogSnapshot }
+fun interface NormalizedCatalog {
+    suspend fun snapshot(): CatalogSnapshot
+    /** Null means this source supports only list snapshots, not that the product is absent. */
+    suspend fun detail(id: String): ProductResponse? = null
+}
 
 internal data class LoadedCatalog(val products: List<Product>, val pages: List<Int>)
 
@@ -78,7 +82,12 @@ object CatalogSources {
         return when (mode) {
             "live" -> {
                 val client = EktRawClient(EktConfig.fromEnvironment(environment))
-                CachedEktCatalog({ runInterruptible(Dispatchers.IO) { loadCatalogPages(limit, maxPages, client::listProducts) } }, SourceMode.LIVE, ttl, timeoutMs = timeout)
+                val list = CachedEktCatalog({ runInterruptible(Dispatchers.IO) { loadCatalogPages(limit, maxPages, client::listProducts) } }, SourceMode.LIVE, ttl, timeoutMs = timeout)
+                val details = CachedEktDetails({ id -> kz.hackalem.catalog.normalization.EktDetailNormalizer.normalize(client.getProductDetails(id), id) }, ttl, timeoutMs = timeout)
+                object : NormalizedCatalog {
+                    override suspend fun snapshot() = list.snapshot()
+                    override suspend fun detail(id: String) = details.product(id)
+                }
             }
             "snapshot" -> {
                 val file = environment["CATALOG_SNAPSHOT_PATH"]?.takeIf { it.isNotBlank() }

@@ -62,6 +62,10 @@ async def answer_message(rt, message):
         elif not items: unresolved.append(q)
         for p in items:
             if p.get('id'): products[p['id']]=p
+    if not products and rt.settings.catalog_mode == 'http' and query.isascii() and query.isdecimal():
+        # Product IDs can resolve directly even outside the cached search pages.
+        try: products[query]=await rt.catalog.detail(query)
+        except DomainError: pass
     # A short contextual follow-up can reuse IDs, but re-fetch facts rather than old stock.
     if not products and not blocks and history and len(query)<120:
         ids=[p['id'] for p in history[-1].get('products',[])][:5]
@@ -69,6 +73,17 @@ async def answer_message(rt, message):
             try: products[id]=await rt.catalog.detail(id)
             except DomainError: pass
     selected=list(products.values())[:10]
+    if rt.settings.catalog_mode == 'http':
+        async def enrich(product):
+            if product.get('catalog_metadata', {}).get('detailLevel') == 'PRODUCT_DETAIL':
+                return product
+            try:
+                return await rt.catalog.detail(product['id'])
+            except DomainError:
+                warnings.append('Подробные данные товара временно недоступны.')
+                return product
+        # The HTTP client's semaphore also bounds upstream detail concurrency.
+        selected = list(await asyncio.gather(*(enrich(p) for p in selected)))
     if any(p.get('stale') for p in selected):
         warnings.append('Данные каталога устарели; цену и наличие необходимо обновить перед покупкой.')
     if len(products)>10: warnings.append('Показаны первые 10 товаров; уточните выбор для остальных.')
@@ -93,13 +108,13 @@ async def answer_message(rt, message):
     if any(p.get('source')=='synthetic' for p in selected): lines.append('Демонстрационные данные, не реальные цены и остатки ekt.kz.')
     for p in selected:
         price=p.get('price'); price_text=f"{price['amount']} {price.get('currency') or '(валюта неизвестна)'}" if price else 'цена неизвестна'
-        stock=', '.join(f"{s['warehouse_id']}: {s.get('available_quantity') or 'неизвестно'} {p.get('unit','')}" for s in p.get('stock',[]))
+        stock=', '.join(f"{s.get('warehouse_name') or s['warehouse_id']}: {s.get('available_quantity') if s.get('available_quantity') is not None else 'неизвестно'} {p.get('unit','')}" for s in p.get('stock',[]))
         availability = p.get('availability')
-        if not stock and isinstance(availability, dict):
+        if isinstance(availability, dict):
             quantity = availability.get('quantity')
             if quantity is not None:
                 stock = str(quantity) + (' (демо)' if availability.get('simulated') else '')
-            elif availability.get('status') == 'OUT_OF_STOCK':
+            elif not stock and availability.get('status') in {'OUT_OF_STOCK', 'UNAVAILABLE'}:
                 stock = 'нет в наличии'
         lines.append(f"{p.get('sku') or p['id']} — {p['name']}. {price_text}. Остаток: {stock or 'неизвестен'}.")
         if p.get('attributes'): lines.append('; '.join(f'{k}: {v}' for k,v in p['attributes'].items()))

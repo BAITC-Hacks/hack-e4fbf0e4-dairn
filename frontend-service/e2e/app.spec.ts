@@ -133,7 +133,9 @@ async function mockAssistant(page: Page, options: MockOptions = {}) {
         status: options.failedMessage ? 'failed' : 'completed',
         answer: options.failedMessage ? null : 'Нашли товар по вашему запросу.',
         products: options.failedMessage ? [] : options.products || [product],
-        warnings: options.warnings || ['Демонстрационные данные. Проверьте выбор.'],
+        warnings: options.warnings || [
+          'Демонстрационные данные. Проверьте выбор.',
+        ],
         sources: [{ kind: 'catalog', reference: 'DEMO-C16' }],
         error: options.failedMessage
           ? {
@@ -255,7 +257,9 @@ test('widget is accessible, collapsible, and requires explicit cart confirmation
   await expect(
     page.getByRole('heading', { name: 'Ваша демо-корзина' }),
   ).toBeVisible();
-  await expect(page.getByText('2 шт × 1500 KZT / шт')).toBeVisible();
+  await expect(
+    page.getByRole('main').getByText('2 шт × 1500 KZT / шт'),
+  ).toBeVisible();
   expect(mock.confirmations).toHaveLength(1);
   expect(page.url()).not.toContain('test-secret');
   expect(
@@ -499,11 +503,15 @@ test('Kazakh UI preserves drafts and API content, completes cart flow, and persi
   await expect(
     page.getByRole('heading', { name: 'Демо-себетіңіз' }),
   ).toBeVisible();
-  await expect(page.getByText(product.name)).toBeVisible();
-  await expect(page.getByText('2 шт × 1500 KZT / шт')).toBeVisible();
+  await expect(page.getByRole('main').getByText(product.name)).toBeVisible();
+  await expect(
+    page.getByRole('main').getByText('2 шт × 1500 KZT / шт'),
+  ).toBeVisible();
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('lang', 'kk');
-  await expect(page.getByText('2 шт × 1500 KZT / шт')).toBeVisible();
+  await expect(
+    page.getByRole('main').getByText('2 шт × 1500 KZT / шт'),
+  ).toBeVisible();
   await expect(page).toHaveTitle('Электрокомплект · Чат-көмекші');
   expect(
     await page.evaluate(
@@ -571,4 +579,99 @@ test('language switching works when preference storage is unavailable', async ({
   await expect(page.locator('#chat-message')).toBeEnabled();
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
+});
+
+test('catalog stock distinguishes simulation from real zero and hides retired warnings in restored history', async ({
+  page,
+}) => {
+  const retiredWarnings = [
+    'Доступна только часть каталога; отсутствие результата не означает отсутствие товара.',
+    'Доступны данные списка; наличие и валюта цены не подтверждены.',
+  ];
+  const simulated: Product = {
+    id: 'http-simulated',
+    sku: 'LIVE-SAMPLE-1',
+    name: 'Товар с тестовым остатком',
+    price: { amount: '1810', currency: null },
+    stock: [],
+    source: 'EKT_PRODUCT_LIST',
+    availability: {
+      status: 'IN_STOCK',
+      quantity: 42,
+      simulated: true,
+      source: 'assistant_simulation',
+    },
+    catalog_metadata: {
+      source: 'EKT_PRODUCT_LIST',
+      mode: 'LIVE',
+      coverage: 'PARTIAL',
+      pages: [1],
+      loadedProducts: 20,
+      totalProducts: null,
+      observedAt: null,
+      loadedAt: new Date().toISOString(),
+      expiresAt: expiry(),
+      freshness: 'RECENTLY_FETCHED',
+      detailLevel: 'LIST_SUMMARY',
+    },
+  };
+  const actualZero: Product = {
+    ...simulated,
+    id: 'http-real-zero',
+    sku: 'LIVE-SAMPLE-2',
+    name: 'Товар с подтверждённым нулевым остатком',
+    description: 'Описание из API не переводится.',
+    attributes: { brand: 'MEGALIGHT' },
+    unit: 'шт',
+    stock: [
+      {
+        warehouse_id: 'almaty',
+        warehouse_name: 'Алматы',
+        available_quantity: '0',
+      },
+    ],
+    availability: { status: 'UNAVAILABLE', quantity: '0' },
+  };
+  const remainingWarning = 'Сертификат требует проверки источника.';
+  const mock = await mockAssistant(page, {
+    products: [simulated, actualZero],
+    warnings: [...retiredWarnings, remainingWarning],
+  });
+  await page.goto('/');
+  await sendText(page, 'LIVE-SAMPLE-1 и LIVE-SAMPLE-2');
+  const cards = page.locator('.product-card');
+  await expect(cards).toHaveCount(2);
+  await expect(cards.first()).toContainText('1810 KZT');
+  await expect(cards.first()).not.toContainText('Валюта неизвестна');
+  await expect(cards.first().locator('.data-tag')).toHaveText(
+    'Смоделированный остаток: 42',
+  );
+  await expect(cards.nth(1).locator('.data-tag')).toHaveCount(0);
+  await cards.nth(1).getByText('Характеристики и наличие').click();
+  await expect(cards.nth(1)).toContainText('Нет в наличии');
+  await expect(cards.nth(1)).toContainText('Описание из API не переводится.');
+  await expect(cards.nth(1)).toContainText('Количество по каталогу: 0 шт');
+  await expect(cards.nth(1)).toContainText('Алматы: 0 шт');
+  await expect(cards.locator('input, select')).toHaveCount(0);
+  for (const button of await cards.getByRole('button').all())
+    await expect(button).toBeDisabled();
+  for (const warning of retiredWarnings)
+    await expect(page.getByText(warning, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(remainingWarning, { exact: true })).toBeVisible();
+  await switchLanguage(page, 'kk');
+  await expect(cards.first().locator('.data-tag')).toHaveText(
+    'Модельденген қалдық: 42',
+  );
+  await expect(cards.nth(1).locator('.data-tag')).toHaveCount(0);
+  await expect(cards.nth(1)).toContainText('Қоймада жоқ');
+  await expect(cards.nth(1)).toContainText('Описание из API не переводится.');
+  await page.reload();
+  await expect(cards.first().locator('.data-tag')).toHaveText(
+    'Модельденген қалдық: 42',
+  );
+  for (const warning of retiredWarnings)
+    await expect(page.getByText(warning, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(remainingWarning, { exact: true })).toBeVisible();
+  expect(mock.received).toHaveLength(1);
+  expect(mock.confirmations).toHaveLength(0);
 });

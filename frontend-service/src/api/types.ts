@@ -46,6 +46,7 @@ export interface Product {
   id: string;
   sku: string;
   name: string;
+  description?: string | null;
   category?: string;
   attributes?: Record<string, string | number | boolean | null>;
   certificates?: { name?: string; url: string }[];
@@ -53,7 +54,11 @@ export interface Product {
   unit?: string | null;
   quantity_step?: string | null;
   minimum_quantity?: string | null;
-  stock: { warehouse_id: string; available_quantity: string | null }[];
+  stock: {
+    warehouse_id: string;
+    warehouse_name?: string;
+    available_quantity: string | null;
+  }[];
   availability?:
     | string
     | {

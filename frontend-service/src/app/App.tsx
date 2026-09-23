@@ -1,3 +1,6 @@
+import { useAuth } from '../features/auth/AuthProvider';
+import { useAssistant } from '../features/chat/useAssistant';
+import { AppLink, useLocation } from './navigation';
 import { LanguageSwitch, useLocale } from '../i18n/LocaleProvider';
 import { lazy, Suspense, useState } from 'react';
 import { Icon } from '../components/Icon';
@@ -8,6 +11,12 @@ const CartPage = lazy(() =>
   })),
 );
 export function App() {
+  const { credential } = useAuth();
+  return <SessionApp key={credential?.access_token || 'guest'} />;
+}
+function SessionApp() {
+  const assistant = useAssistant();
+  const location = useLocation();
   const { t } = useLocale();
   const categories = [
     {
@@ -40,7 +49,7 @@ export function App() {
   const [search, setSearch] = useState('');
   const ask = (text: string) =>
     setPrompt((previous) => ({ text, id: previous.id + 1 }));
-  const isCart = window.location.pathname === '/cart';
+  const isCart = location.split('?')[0] === '/cart';
   return (
     <>
       <a className="skip-link" href="#main">
@@ -56,7 +65,7 @@ export function App() {
           </div>
         </div>
         <div className="site-container main-header">
-          <a
+          <AppLink
             href="/"
             className="brand"
             aria-label={t('Электрокомплект — главная')}
@@ -68,7 +77,7 @@ export function App() {
               {t('ЭЛЕКТРОКОМПЛЕКТ')}
               <small>{t('ЭНЕРГИЯ ВАШИХ РЕШЕНИЙ')}</small>
             </span>
-          </a>
+          </AppLink>
           {!isCart && (
             <form
               className="site-search"
@@ -102,7 +111,7 @@ export function App() {
           >
             {t('Сайт ЭКТ')} <Icon name="arrow" size={16} />
           </a>
-          <a
+          <AppLink
             href="/cart"
             className="header-cart"
             aria-label={t('Корзина')}
@@ -110,15 +119,15 @@ export function App() {
           >
             <Icon name="cart" size={22} />
             <span>{t('Корзина')}</span>
-          </a>
+          </AppLink>
         </div>
         <nav
           className="site-container site-nav"
           aria-label={t('Основная навигация')}
         >
-          <a className="catalog-link" href="/#catalog">
+          <AppLink className="catalog-link" href="/#catalog">
             <Icon name="menu" size={19} /> {t('Каталог продукции')}
-          </a>
+          </AppLink>
           <a href="https://ekt.kz" target="_blank" rel="noreferrer">
             {t('О компании')}
           </a>
@@ -141,7 +150,11 @@ export function App() {
       </header>
       {isCart ? (
         <Suspense fallback={<main id="main">{t('Загружаем корзину…')}</main>}>
-          <CartPage />
+          <CartPage
+            session={assistant.session}
+            connecting={assistant.connecting}
+            location={location}
+          />
         </Suspense>
       ) : (
         <main id="main" tabIndex={-1} className="site-container storefront">
@@ -263,7 +276,7 @@ export function App() {
         <span>{t('© Электрокомплект · HACKALEM AI')}</span>
         <span>{t('Демо-интерфейс. Реальные условия — на ekt.kz.')}</span>
       </footer>
-      {!isCart && <ChatWidget prompt={prompt} />}
+      <ChatWidget prompt={prompt} assistant={assistant} hidden={isCart} />
     </>
   );
 }

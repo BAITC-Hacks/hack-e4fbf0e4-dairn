@@ -1,3 +1,4 @@
+import { AuthProvider } from './features/auth/AuthProvider';
 import { LocaleProvider } from './i18n/LocaleProvider';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -10,7 +11,9 @@ if (!root) throw new Error('The application root element is missing.');
 createRoot(root).render(
   <StrictMode>
     <LocaleProvider>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </LocaleProvider>
   </StrictMode>,
 );

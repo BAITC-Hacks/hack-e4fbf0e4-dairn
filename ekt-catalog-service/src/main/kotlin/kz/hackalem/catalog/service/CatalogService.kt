@@ -50,6 +50,16 @@ class CatalogService(private val catalog: NormalizedCatalog? = null) {
 
     suspend fun product(id: String?): ProductResponse {
         val validated = CatalogInput.productId(id)
+        try {
+            catalog?.detail(validated)?.let { return it }
+        } catch (error: EktException) {
+            throw CatalogException(when (error) {
+                is EktException.NotFound -> CatalogError.PRODUCT_NOT_FOUND
+                is EktException.InvalidResponse -> CatalogError.UPSTREAM_INVALID_RESPONSE
+                is EktException.Configuration -> CatalogError.CATALOG_NOT_READY
+                else -> CatalogError.UPSTREAM_UNAVAILABLE
+            })
+        }
         val snapshot = snapshot()
         val product = snapshot.products.firstOrNull { it.id == validated }
             ?: throw CatalogException(CatalogError.PRODUCT_NOT_IN_LOADED_SAMPLE)

@@ -14,7 +14,7 @@ export function priceText(
   t: Translate = translators.ru,
 ) {
   return price
-    ? `${price.amount} ${price.currency || `(${t('Валюта неизвестна')})`}`
+    ? `${price.amount} ${price.currency || 'KZT'}`
     : t('Цена неизвестна');
 }
 
@@ -120,6 +120,17 @@ export function ProductCard({ product, disabled, onSelect }: ProductCardProps) {
     typeof product.availability === 'object' && product.availability?.simulated
       ? product.availability
       : null;
+  const availabilityStatus =
+    typeof product.availability === 'string'
+      ? product.availability
+      : product.availability?.status;
+  const availabilityLabels: Record<string, string> = {
+    AVAILABLE: t('В наличии'),
+    IN_STOCK: t('В наличии'),
+    UNAVAILABLE: t('Нет в наличии'),
+    OUT_OF_STOCK: t('Нет в наличии'),
+    UNKNOWN: t('Наличие неизвестно'),
+  };
   const unit = product.unit || t('Единица измерения неизвестна');
   const productUrl = product.pageUrl
     ? safeLink(product.pageUrl, 'product')
@@ -168,6 +179,7 @@ export function ProductCard({ product, disabled, onSelect }: ProductCardProps) {
       <details>
         <summary>{t('Характеристики и наличие')}</summary>
         {metadata && <CatalogMetadataDetails metadata={metadata} />}
+        {product.description && <p>{product.description}</p>}
         {!Object.keys(product.attributes || {}).length && (
           <p>{t('Характеристики не предоставлены.')}</p>
         )}
@@ -187,12 +199,10 @@ export function ProductCard({ product, disabled, onSelect }: ProductCardProps) {
             </div>
           ))}
         </dl>
-        {product.availability && (
+        {availabilityStatus && (
           <p>
             {t('Наличие:')}{' '}
-            {typeof product.availability === 'string'
-              ? product.availability
-              : product.availability.status}
+            {availabilityLabels[availabilityStatus] || availabilityStatus}
           </p>
         )}
         {typeof product.availability === 'object' && !simulatedAvailability && (
@@ -206,7 +216,7 @@ export function ProductCard({ product, disabled, onSelect }: ProductCardProps) {
         {product.stock?.length ? (
           product.stock.map((stock) => (
             <p key={stock.warehouse_id}>
-              {stock.warehouse_id}:{' '}
+              {stock.warehouse_name || stock.warehouse_id}:{' '}
               {stock.available_quantity === null
                 ? t('Остаток неизвестен')
                 : `${stock.available_quantity} ${unit}`}

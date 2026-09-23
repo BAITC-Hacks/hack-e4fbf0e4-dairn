@@ -16,7 +16,7 @@ class Price(WireModel):
 
 class Availability(WireModel):
     status: str
-    quantity: str | int | float | None
+    quantity: str | int | float | None = None
 
 
 class CatalogProduct(WireModel):
@@ -71,14 +71,15 @@ def normalize(product: CatalogProduct, metadata: Metadata):
         result['price']['currency'] = 'KZT'
     availability = result['availability']
     availability.update(simulated=False, source='catalog')
-    if availability['quantity'] is None and availability['status'].upper() != 'OUT_OF_STOCK':
+    if availability['quantity'] is None and availability['status'].upper() not in {'OUT_OF_STOCK', 'UNAVAILABLE'}:
         # Stable pseudorandom stock avoids changing quantities between workers,
         # repeated searches, detail requests, and container restarts.
         seed = sha256(('ekt-demo-stock:' + product.id).encode()).digest()
         availability.update(quantity=int.from_bytes(seed[:4], 'big') % 100 + 1,
                             status='IN_STOCK', simulated=True, source='assistant_simulation')
     # Keep wire fields for consumers, plus Assistant's existing internal aliases.
-    result.update(stock=[], attributes={}, certificates=[], observed_at=metadata.observedAt,
+    result.update(stock=result.get('stock') or [], attributes=result.get('attributes') or {},
+                  certificates=result.get('certificates') or [], observed_at=metadata.observedAt,
                   source='synthetic' if metadata.source == 'SYNTHETIC_TEST_FIXTURE' else metadata.source,
                   stale=is_stale(metadata), catalog_metadata=metadata.model_dump())
     return result

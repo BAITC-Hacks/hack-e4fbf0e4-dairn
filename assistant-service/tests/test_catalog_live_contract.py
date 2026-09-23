@@ -106,15 +106,35 @@ async def test_missing_or_null_quantity_gets_explicitly_simulated_stock(availabi
 
 
 @pytest.mark.asyncio
-async def test_explicit_out_of_stock_without_quantity_is_not_made_purchasable():
+@pytest.mark.parametrize('status', ['OUT_OF_STOCK', 'UNAVAILABLE'])
+async def test_explicit_out_of_stock_without_quantity_is_not_made_purchasable(status):
     data = live_response()
     supplied = data['items'][0]
-    supplied['availability'] = {'status': 'OUT_OF_STOCK', 'quantity': None}
+    supplied['availability'] = {'status': status, 'quantity': None}
     client = await catalog(lambda _: httpx.Response(200, json={'product': supplied, 'metadata': data['metadata']}))
     try:
         product = await client.detail(supplied['id'])
-        assert product['availability'] == {'status': 'OUT_OF_STOCK', 'quantity': None, 'simulated': False, 'source': 'catalog'}
+        assert product['availability'] == {'status': status, 'quantity': None, 'simulated': False, 'source': 'catalog'}
         assert product['stock'] == []
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_detail_preserves_catalog_attributes_certificates_and_warehouse_stock():
+    data = live_response()
+    supplied = data['items'][0]
+    supplied.update(availability={'status': 'OUT_OF_STOCK', 'quantity': 0},
+        stock=[{'warehouse_id': 'almaty', 'available_quantity': '0'}],
+        attributes={'rated_voltage': '220 V'},
+        certificates=[{'url': 'https://ekt.kz/certificate/example.pdf'}])
+    client = await catalog(lambda _: httpx.Response(200, json={'product': supplied, 'metadata': data['metadata']}))
+    try:
+        product = await client.detail(supplied['id'])
+        for field in ('stock', 'attributes', 'certificates'):
+            assert product[field] == supplied[field]
+        assert product['availability']['quantity'] == 0
+        assert product['availability']['simulated'] is False
     finally:
         await client.close()
 

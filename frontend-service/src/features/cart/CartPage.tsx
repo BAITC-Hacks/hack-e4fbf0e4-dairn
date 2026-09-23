@@ -1,3 +1,6 @@
+import { AppLink } from '../../app/navigation';
+import { useAuth } from '../auth/AuthProvider';
+import { AccountPanel } from '../auth/AccountPanel';
 import { useLocale } from '../../i18n/LocaleProvider';
 import { useEffect, useState } from 'react';
 import {
@@ -5,20 +8,28 @@ import {
   InterfaceError,
   errorText,
   forgetSession,
-  readSession,
   request,
   sessionPath,
 } from '../../api/client';
-import type { Cart } from '../../api/types';
+import type { Cart, Session } from '../../api/types';
 import { QuoteRows } from './QuoteRows';
-export function CartPage() {
+export function CartPage({
+  session,
+  connecting,
+  location,
+}: {
+  session: Session | null;
+  connecting: boolean;
+  location: string;
+}) {
+  const { credential, invalidate } = useAuth();
   const { t } = useLocale();
   const [cart, setCart] = useState<Cart | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     const abort = new AbortController();
-    const session = readSession();
+    if (connecting) return;
     const expected = new URLSearchParams(window.location.search).get(
       'session_id',
     );
@@ -41,6 +52,7 @@ export function CartPage() {
         if (!abort.signal.aborted) {
           if (cause instanceof ApiError && [401, 403].includes(cause.status)) {
             forgetSession();
+            if (credential && cause.status === 401) invalidate();
             setCart(null);
           }
           setError(cause);
@@ -49,17 +61,20 @@ export function CartPage() {
     }
     void load();
     return () => abort.abort();
-  }, [revision]);
+  }, [revision, session, connecting, location, credential, invalidate]);
   return (
     <main id="main" className="cart-page">
-      <a href="/">{t('← Вернуться к помощнику')}</a>
+      <AppLink href="/">{t('← Вернуться к помощнику')}</AppLink>
       <span className="eyebrow">{t('Электрокомплект / Помощник')}</span>
-      <h1>{t('Ваша демо-корзина')}</h1>
-      <p className="demo-banner">
-        {t(
-          'Демонстрация. Это не заказ и не корзина сайта ekt.kz. Оплата здесь не принимается.',
-        )}
-      </p>
+      <h1>{t(cart?.mode === 'demo' ? 'Ваша демо-корзина' : 'Корзина')}</h1>
+      {cart?.mode === 'demo' && (
+        <p className="demo-banner">
+          {t(
+            'Демонстрация. Это не заказ и не корзина сайта ekt.kz. Оплата здесь не принимается.',
+          )}
+        </p>
+      )}
+      {!credential && <AccountPanel />}
       {!!error && (
         <p role="alert" className="error-box">
           {errorText(error, t)}

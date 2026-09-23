@@ -12,7 +12,11 @@ data class Product(
     val images: List<String>,
     val pageUrl: String?,
     val availability: Availability = Availability(AvailabilityStatus.UNKNOWN, null),
+    val description: String? = null,
+    val stock: List<WarehouseStock> = emptyList(),
+    val attributes: Map<String, String> = emptyMap(),
 )
+data class WarehouseStock(val id: String, val name: String, val quantity: BigDecimal?)
 data class Price(val amount: BigDecimal, val currency: String? = null)
 enum class AvailabilityStatus { AVAILABLE, UNAVAILABLE, UNKNOWN }
 data class Availability(val status: AvailabilityStatus, val quantity: BigDecimal?)
@@ -26,6 +30,8 @@ data class CatalogMetadata(
     val loadedAt: Instant,
     val expiresAt: Instant?,
     val pages: List<Int> = listOf(page),
+    val source: String = "EKT_PRODUCT_LIST",
+    val detailLevel: String = "LIST_SUMMARY",
 )
 data class CatalogSnapshot(val products: List<Product>, val metadata: CatalogMetadata)
 data class ProductResponse(val product: Product, val metadata: CatalogMetadata)
