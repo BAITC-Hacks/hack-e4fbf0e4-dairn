@@ -1,103 +1,159 @@
-# hack-e4fbf0e4-dairn
+# DAIRN — ассистент для сайта EKT
 
+Проект команды DAIRN для хакатона: веб-интерфейс с чатом, backend ассистента
+и отдельный сервис интеграции с каталогом EKT. Условия задачи — в
+[hackathon-task.json](hackathon-task.json).
 
-Hackathon team repository for DAIRN: EKT website assistant.
+## Состав проекта
 
-Start with the [developer handoff](docs/developer-handoff.md), [architecture](docs/architecture.md), [complete case brief](hackathon-task.json), and [application task plan](planning/ekt-plan.json).
+| Компонент | Назначение |
+| --- | --- |
+| [frontend-service](frontend-service/README.md) | React + TypeScript: интерфейс сайта, чат и отображение товаров |
+| [assistant-service](assistant-service/README.md) | FastAPI: сессии, сообщения, вложения и сценарии корзины; для обработки нужен отдельный worker |
+| [ekt-catalog-service](ekt-catalog-service/README.md) | Kotlin/JVM + Ktor: клиент EKT, нормализация, Catalog API, CLI и опциональный AI-поиск кандидатов |
 
-The proposed application has two backend services: catalog integration/search and assistant/chat/cart orchestration. The chat widget is a frontend client. The React frontend scaffold is self-contained in `frontend-service/`. The root `docker-compose.yml` runs all three microservices plus the assistant worker on a shared Docker network. See [Ubuntu deployment](deploy.md) for required `.env` values, published ports and startup commands. `frontend-service/docker-compose.yml` runs the independent frontend preview and checks.
+Корневой [docker-compose.yml](docker-compose.yml) объединяет три сервиса и worker
+в общей Docker-сети. Сервисные Compose-файлы предназначены для независимого запуска.
 
-**Planning and contract workflow**
+## Быстрый старт каталога без credentials
 
-```sh
-.venv/bin/python -m pip install -e ".[test,contracts]"
-export PYTHONPATH="$PWD/src"
-.venv/bin/harness init --project hackathon-task.json
-.venv/bin/harness analyze
-.venv/bin/harness plan
-.venv/bin/harness validate-plan
-.venv/bin/harness contract generate
-.venv/bin/harness contract validate
-.venv/bin/harness contract review
-.venv/bin/python -m pytest -q
-```
-
-`planning_file` in the brief points to an explicit application plan and takes precedence over inferred Docker services. The plan loads schemas from [CATALOG-API](contracts/catalog.openapi.json) and [ASSISTANT-API](contracts/assistant.openapi.json). Generated local state is stored under gitignored `.harness/`; share the plan, schemas and docs through the repository.
-
-Contracts remain drafts until developer review. After agreement, use `harness contract approve CATALOG-API` and `harness contract approve ASSISTANT-API` to freeze baselines and unblock dependent tasks. `contract mock ID` generates schema metadata, not a running server. `contract test` performs structural checks, not live integration tests. Full OpenAPI validation runs through `tests/test_ekt_openapi.py` when the `contracts` extra is installed.
-
-When schemas change, rerun `plan`; changed contracts return to review and approved baselines are preserved. Use `contract diff ID` and `contract breaking-changes` to inspect compatibility.
-
-Partner credentials belong in server-side environment configuration and must not be committed. Actual catalog payload mapping and partner cart integration remain open; see the [deployment status](deploy.md).
-
-The current `.gitignore` excludes `src/`, so harness source changes are local. The [portable harness patch](planning/harness-explicit-plan.patch) preserves the explicit-plan support for teammates with the original harness. Apply it once to an unmodified matching harness with `git apply planning/harness-explicit-plan.patch`; it is already applied in this workspace. A clean checkout also needs the underlying harness source, which this repository currently excludes.
-
-
-## Frontend application
-
-The self-contained React + TypeScript + Vite application lives in `frontend-service/`. The EKT-inspired demo page has a responsive bottom-right chat widget connected to the Assistant API. Read [frontend instructions](frontend-service/README.md) for configuration, workflows, and test commands.
-
-Start both the API and attachment/message worker with cart links pointing to the same frontend origin:
-
-```sh
-ASSISTANT_FRONTEND_BASE_URL=http://localhost:5173 docker compose -f assistant-service/compose.yaml up --build -d --wait
-docker compose -f frontend-service/docker-compose.yml up --build -d --wait frontend
-# Open http://localhost:5173
-```
-
-Default catalog data and cart operations are synthetic demonstrations. The widget labels them accordingly. It does not implement a payment form or partner checkout. Partner credentials and model keys remain on the backend.
-
-```sh
-docker compose -f frontend-service/docker-compose.yml run --build --rm frontend-test
-docker compose -f frontend-service/docker-compose.yml run --build --rm frontend-e2e
-```
-
-Репозиторий команды хакатона DAIRN. В этой ветке расположен автономный сервис каталога EKT
-и документация его текущего контракта.
-
-## Быстрый старт
-
-Требуются JDK 21 и Gradle 8.8. Из корня репозитория:
+Нужен JDK 21. Gradle 8.8 закреплён в wrapper; при первой сборке нужен доступ
+к дистрибутиву Gradle и зависимостям. Из корня репозитория:
 
 ```sh
 cd ekt-catalog-service
-sh ./gradlew test serverDist
+sh ./gradlew --no-daemon test serverDist
+python3 scripts/verify-local.py
 ```
 
-Сервер запускается отдельной задачей:
+Для HTTP-проверки нужен Python 3. Скрипт временно запускает собранный JAR,
+проверяет API на сохранённом образце и обработку ошибок, затем останавливает сервер.
+Чтобы оставить сервер запущенным:
 
 ```sh
-gradle runServer
+# Из ekt-catalog-service/
+CATALOG_SOURCE=snapshot \
+CATALOG_SNAPSHOT_PATH=src/test/resources/ekt/products-page-1.json \
+sh ./gradlew runServer
 ```
 
-По умолчанию он доступен только на `127.0.0.1:8080`. Для запуска на сохранённой странице
-каталога укажите `CATALOG_SOURCE=snapshot` и путь `CATALOG_SNAPSHOT_PATH`; подробности — в
-[контракте API](docs/API.md). Для live-режима нужны переменные EKT в окружении процесса;
-их нельзя добавлять в Git, аргументы команд или документацию.
+В другом терминале:
 
-## Состав
+```sh
+curl -i 'http://127.0.0.1:8080/health/live'
+curl -i 'http://127.0.0.1:8080/api/catalog/products/45357'
+curl -i 'http://127.0.0.1:8080/api/catalog/products?query=310100080_'
+```
 
-- [ekt-catalog-service](ekt-catalog-service/README.md) — Kotlin/Ktor сервис, CLI, Gradle,
-  Docker/Compose и скрипты проверки;
-- [Catalog API](docs/API.md) — публичные маршруты и значения отсутствующих данных;
-- [Данные EKT](docs/EKT_DATA.md) — границы и поля изученного образца списка товаров;
-- [AI-поиск](docs/AI_SEARCH.md) — ограниченный сценарий поиска кандидатов через OpenAI;
-- [Развёртывание](docs/DEPLOYMENT.md) — локальная проверка, контейнеризация и условия
-  production-развёртывания;
-- [Комментарии по документации](docs/WORK_COMMENTS.md) — открытые ограничения и следующие
-  шаги по итогам чтения этой ветки.
+Это офлайн-запуск на сохранённой странице из 20 товаров. Он не подтверждает
+доступность EKT или актуальность цен. Задача `runServer` запускает HTTP-сервис,
+а `run` — CLI. Для запуска собранного JAR сохраняйте рядом каталог `build/server/lib/`.
 
-## Важные ограничения
+## Запуск всего приложения
 
-Сервис проверен на сохранённом образце первой страницы из 20 товаров. Это частичный охват,
-а не подтверждение живого доступа к EKT, полной пагинации или схемы деталей товара. Описания
-и характеристики из карточки нужны каталогу, но должны поступать отдельно: свободный текст
-описания не следует автоматически представлять как структурированные характеристики.
+Нужны Docker Engine, Compose plugin и credentials EKT. Из корня репозитория:
 
-Фильтр EKT «В наличии» сам по себе не подтверждает количество остатков. Пока отдельное
-числовое поле API не проверено, доступность следует передавать как «есть / нет / неизвестно»,
-а количество оставлять неизвестным.
+```sh
+# Только при первой настройке; существующий .env нужно сохранить.
+cp .env.example .env
+chmod 600 .env
+# Заполните EKT_API_USERNAME, EKT_API_PASSWORD и PUBLIC_FRONTEND_URL в .env.
+docker compose config --quiet
+docker compose up -d --build --wait --wait-timeout 180
+docker compose ps
+```
 
-AI-поиск формирует только потенциальных кандидатов. Он не подтверждает техническую
-совместимость, актуальное наличие или цену и не заменяет правила каталога.
+По умолчанию frontend доступен на `http://localhost:5173`, Assistant API — на
+`http://localhost:8000/docs`, Catalog API — на `http://localhost:8080`.
+Корневой Compose использует live-каталог, отключает синтетическую подмену данных
+и операции реальной корзины: партнёрский адаптер корзины ещё не подключён.
+Независимый деморежим с синтетическими товарами описан в README сервисов.
 
+Настройка портов, домена, HTTPS, хранения данных и обновления приложения — в
+[инструкции развёртывания всего приложения](deploy.md). После запуска нужно
+проверить запрос к каталогу: readiness не подтверждает доступность живого EKT.
+
+## Возможности Catalog API
+
+| Метод и маршрут | Текущее поведение |
+| --- | --- |
+| `GET /api/catalog/products/{id}` | Краткая карточка из загруженных страниц списка |
+| `GET /api/catalog/products?query={query}` | Поиск по артикулу и названию в загруженной выборке |
+| `GET /api/catalog/products/{id}/availability` | Наличие `UNKNOWN`, количество `null` для изученной схемы |
+| `GET /api/catalog/products/{id}/analogs` | HTTP 422 для загруженного товара: недостаточно проверенных данных |
+| `POST /api/catalog/assist/search` | Опциональный разбор текста и предложение кандидатов через OpenAI |
+| `GET /health/live` | Проверка доступности процесса |
+| `GET /health/ready` | Проверка наличия настроенного адаптера; не проверяет upstream |
+
+`id` и артикул — разные значения: для артикула используйте `query`.
+Поиск не учитывает регистр, точное совпадение артикула идёт первым.
+Узкие подсказки для запросов «автомат» и «дифавтомат» учитывают сокращения
+`АВ DRX…` и `Диф.авт.` в названиях. Это не проверка технической совместимости.
+
+Ответ поиска содержит `items`, `matchedProducts`, `warnings` и `metadata`.
+Предупреждение `PARTIAL_CATALOG_SEARCH` возвращается и при найденных совпадениях.
+Пустой результат не доказывает отсутствие товара во всём каталоге; отсутствующий
+в выборке ID возвращает `PRODUCT_NOT_IN_LOADED_SAMPLE`. Ошибка источника
+возвращается явно, а не превращается в успешный пустой список.
+
+Полный контракт, примеры JSON и коды ошибок — в [docs/API.md](docs/API.md).
+
+## Источники и конфигурация каталога
+
+При самостоятельном запуске JVM источник по умолчанию выключен (`CATALOG_SOURCE=disabled`).
+Режим `snapshot` читает одну сохранённую страницу без сети. Режим `live` требует
+`EKT_API_BASE_URL` (HTTPS origin без `/api`), `EKT_API_USERNAME` и `EKT_API_PASSWORD`.
+При сбое live-источника автоматической подмены на snapshot нет.
+
+Live-адаптер последовательно читает страницы начиная с первой. Загрузка ограничена
+числом товаров, страниц и общим таймаутом; пустая страница завершает обход.
+По умолчанию `CATALOG_MAX_PRODUCTS=100`, `CATALOG_MAX_PAGES=10`,
+`CATALOG_LOAD_TIMEOUT_MS=35000`, `CATALOG_CACHE_TTL_SECONDS=60`.
+Корневой Compose задаёт некоторые значения отдельно. Загрузка выполняется лениво,
+результат кешируется; ошибки страниц отклоняют всю загрузку.
+
+Охват всегда `PARTIAL`, общее число товаров неизвестно (`totalProducts=null`).
+Ограниченная пагинация проверена синтетическими тестами; поведение следующих
+страниц реального EKT ещё требует проверки. Для snapshot актуальность неизвестна;
+время live-загрузки не гарантирует актуальность коммерческих данных поставщика.
+
+Самостоятельный сервер слушает `127.0.0.1:8080`; адрес задаётся через `CATALOG_HOST`,
+порт — через `PORT` или `CATALOG_PORT` (`PORT` имеет приоритет).
+Compose загружает `.env`, JVM и CLI автоматически его не читают.
+Credentials и ключи моделей должны оставаться в серверном окружении, вне Git
+и конфигурации frontend. Все параметры — в [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## AI-поиск и ограничения данных
+
+AI-поиск выключен по умолчанию. Для включения нужны `OPENAI_SEARCH_ENABLED=true`,
+`OPENAI_API_KEY` и явно выбранная `OPENAI_MODEL`. Обычный GET-поиск не зависит от OpenAI.
+Флаг `OPENAI_PREVALIDATION_ENABLED` управляет отдельной функцией и не включает поиск.
+
+Сервис выполняет до двух AI-вызовов, рассматривает до 20 товаров и возвращает
+до пяти кандидатов. Товарные факты берутся из нормализованного каталога;
+модель не получает credentials и raw EKT JSON. Результат содержит
+`verifiedAnalogs=false`, `compatibility=UNVERIFIED`, `requirementsVerified=false`.
+Живая проверка именно этого сценария Catalog API в документации не подтверждена.
+
+Изученный образец списка не подтверждает валюту, наличие, количество, склады,
+сертификаты и структурированные характеристики. Отсутствующая цена остаётся `null`,
+сумма передаётся точной десятичной строкой, неизвестная валюта не заменяется на KZT.
+Пустой `offers` и фильтр сайта «В наличии» не доказывают численный остаток.
+Описание товара нужно хранить отдельно от проверенных характеристик.
+
+Для настоящего подбора аналогов остаётся проверить detail endpoint, параметры
+совместимости и актуальное наличие. Внешнее развёртывание каталога, HTTPS,
+живые запросы EKT и откат на целевом хосте требуют отдельной проверки;
+локальный smoke-test не подтверждает готовность production.
+
+## Документация
+
+- [Catalog API](docs/API.md) — маршруты, JSON-контракт, поиск, пагинация, кеш и ошибки.
+- [Данные EKT](docs/EKT_DATA.md) — происхождение образца, наблюдаемая схема и план проверки API.
+- [AI-поиск](docs/AI_SEARCH.md) — протокол поиска кандидатов, запуск, статусы и ограничения.
+- [Развёртывание каталога](docs/DEPLOYMENT.md) — конфигурация, JAR, Docker, health, smoke и rollback; запись результатов локальной проверки.
+- [Комментарии по документации](docs/WORK_COMMENTS.md) — ограничения достоверности данных и открытые вопросы.
+- [Развёртывание приложения](deploy.md) — общий Compose для frontend, каталога, ассистента и worker.
+
+Записи о выполненных проверках относятся к указанным в документах ревизиям и датам;
+они не заменяют проверку текущей сборки или целевого окружения.

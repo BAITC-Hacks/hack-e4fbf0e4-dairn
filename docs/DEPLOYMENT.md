@@ -61,6 +61,7 @@ because interpolation may reveal secrets.
 | `CATALOG_CORS_ORIGINS` | Optional comma-separated exact HTTP(S) origins, no paths/trailing slashes; empty disables cross-origin access; credentials are never enabled |
 | `CATALOG_SNAPSHOT_PATH` | Required only for snapshot mode; mount the file read-only into a container |
 | `CATALOG_MAX_PRODUCTS` | Default 100; range 1–1000 |
+| `CATALOG_MAX_PAGES` | Default 10; range 1–100; maximum sequential page requests per live refresh |
 | `CATALOG_CACHE_TTL_SECONDS` | Default 60; range 1–3600 |
 | `CATALOG_LOAD_TIMEOUT_MS` | Default 35000; range 1–120000 |
 | `OPENAI_SEARCH_ENABLED` | Default false; when enabled, existing assisted-search behavior is preserved |
