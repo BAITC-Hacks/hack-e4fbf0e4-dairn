@@ -1,0 +1,48 @@
+name: ekt-assistant
+
+x-environment: &environment
+  ASSISTANT_DATA_DIR: /data
+  ASSISTANT_ENVIRONMENT: ${ASSISTANT_ENVIRONMENT:-development}
+  ASSISTANT_ALLOW_DEMO_SESSIONS: ${ASSISTANT_ALLOW_DEMO_SESSIONS:-true}
+  ASSISTANT_BOOTSTRAP_TOKEN: ${ASSISTANT_BOOTSTRAP_TOKEN:-}
+  ASSISTANT_CATALOG_MODE: ${ASSISTANT_CATALOG_MODE:-demo}
+  ASSISTANT_CATALOG_BASE_URL: ${ASSISTANT_CATALOG_BASE_URL:-http://catalog-service:8000}
+  ASSISTANT_CATALOG_SERVICE_TOKEN: ${ASSISTANT_CATALOG_SERVICE_TOKEN:-}
+  ASSISTANT_CATALOG_TIMEOUT_SECONDS: ${ASSISTANT_CATALOG_TIMEOUT_SECONDS:-3}
+  ASSISTANT_CART_MODE: ${ASSISTANT_CART_MODE:-demo}
+  ASSISTANT_FRONTEND_BASE_URL: ${ASSISTANT_FRONTEND_BASE_URL:-http://localhost:3000}
+  ASSISTANT_CORS_ORIGINS: '${ASSISTANT_CORS_ORIGINS:-["http://localhost:3000","http://localhost:5173"]}'
+  ASSISTANT_MODEL_API_KEY: ${ASSISTANT_MODEL_API_KEY:-}
+  ASSISTANT_MODEL_NAME: ${ASSISTANT_MODEL_NAME:-}
+  ASSISTANT_POLICY_FILE: /config/policies.json
+
+services:
+  assistant-service:
+    image: ekt-assistant:local
+    build: .
+    ports:
+      - "127.0.0.1:${ASSISTANT_PORT:-8000}:8000"
+    environment: *environment
+    volumes:
+      - assistant-data:/data
+      - ./config:/config:ro
+    init: true
+    restart: unless-stopped
+  assistant-worker:
+    image: ekt-assistant:local
+    command: ["python", "-m", "app.worker"]
+    environment: *environment
+    volumes:
+      - assistant-data:/data
+      - ./config:/config:ro
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,time; assert time.time()-os.path.getmtime('/data/worker.heartbeat')<30"]
+      interval: 15s
+      timeout: 3s
+      start_period: 15s
+      retries: 3
+
+volumes:
+  assistant-data:
