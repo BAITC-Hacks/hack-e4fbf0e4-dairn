@@ -253,7 +253,9 @@ test('widget is accessible, collapsible, and requires explicit cart confirmation
   await expect(
     page.getByRole('heading', { name: 'Ваша демо-корзина' }),
   ).toBeVisible();
-  await expect(page.getByText('2 шт × 1500 KZT / шт')).toBeVisible();
+  await expect(
+    page.getByRole('main').getByText('2 шт × 1500 KZT / шт'),
+  ).toBeVisible();
   expect(mock.confirmations).toHaveLength(1);
   expect(page.url()).not.toContain('test-secret');
   expect(
@@ -497,11 +499,15 @@ test('Kazakh UI preserves drafts and API content, completes cart flow, and persi
   await expect(
     page.getByRole('heading', { name: 'Демо-себетіңіз' }),
   ).toBeVisible();
-  await expect(page.getByText(product.name)).toBeVisible();
-  await expect(page.getByText('2 шт × 1500 KZT / шт')).toBeVisible();
+  await expect(page.getByRole('main').getByText(product.name)).toBeVisible();
+  await expect(
+    page.getByRole('main').getByText('2 шт × 1500 KZT / шт'),
+  ).toBeVisible();
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('lang', 'kk');
-  await expect(page.getByText('2 шт × 1500 KZT / шт')).toBeVisible();
+  await expect(
+    page.getByRole('main').getByText('2 шт × 1500 KZT / шт'),
+  ).toBeVisible();
   await expect(page).toHaveTitle('Электрокомплект · Чат-көмекші');
   expect(
     await page.evaluate(

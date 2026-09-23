@@ -1,0 +1,74 @@
+.account-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #f5f9fc;
+  font-size: 12px;
+}
+.account-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.account-summary strong {
+  overflow-wrap: anywhere;
+}
+.account-toggle {
+  font-weight: 600;
+  padding-top: 0;
+}
+.account-panel .account-note,
+.account-panel .account-hint {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+  margin: 4px 0 8px;
+}
+.account-panel .account-note:last-child {
+  margin-bottom: 0;
+}
+.account-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.account-modes button {
+  background: white;
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  min-height: 36px;
+  font-size: 11px;
+}
+.account-modes button[aria-pressed='true'] {
+  color: white;
+  background: var(--navy);
+  border-color: var(--navy);
+}
+.account-panel form {
+  display: grid;
+  gap: 6px;
+}
+.account-panel input {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #a7bac8;
+  background: #fff;
+  color: var(--navy);
+  font-size: 14px;
+}
+.account-panel form label {
+  font-weight: 600;
+  margin-top: 4px;
+}
+.account-panel .error-box {
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .account-panel input {
+    font-size: 16px;
+  }
+}

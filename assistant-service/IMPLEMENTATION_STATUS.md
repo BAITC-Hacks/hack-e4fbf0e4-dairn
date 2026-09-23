@@ -1,3 +1,5 @@
+> Latest live stack verification: [LIVE_TEST_REPORT.md](LIVE_TEST_REPORT.md) (40 Assistant tests and 73 live checks passed). The endpoint/task audit below predates the now-running `ekt-catalog-service`; its old catalog-provider status is historical.
+
 # EKT implementation status
 
 Assistant currently implements **18 HTTP operations across 16 paths**. All originally planned Assistant routes exist; history, message polling and SSE were added. No additional core Assistant route is waiting to be created. Several routes still need live integration behind them.

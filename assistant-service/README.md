@@ -95,3 +95,7 @@ The smoke check generates temporary documents and uses isolated temporary state.
 ## Accounts and user history
 
 See [AUTHENTICATION.md](AUTHENTICATION.md) for the account API, SQLite schema, retention and frontend flow. Registration/login return an opaque account bearer token. `POST /v1/sessions` with this token creates an owned conversation; `GET /v1/sessions` lists that user's history, and existing message endpoints accept the same token. Logging out or restarting containers does not delete history. SQLite tables are added automatically without removing existing guest data.
+
+## Full-stack live verification
+
+The root `docker-compose.yml` stack is live-tested with EKT and OpenAI. See [LIVE_TEST_REPORT.md](LIVE_TEST_REPORT.md) for running URLs, timings, communication traces, fixes and remaining catalog coverage limits. The standalone Compose instructions above remain available for isolated demo/offline development.

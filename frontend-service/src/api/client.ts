@@ -4,7 +4,12 @@ import {
   type Translate,
   type TranslationKey,
 } from '../i18n/messages';
-import type { AccountCredential, ApiErrorBody, Attachment, Session } from './types';
+import type {
+  AccountCredential,
+  ApiErrorBody,
+  Attachment,
+  Session,
+} from './types';
 
 export const API_BASE = (
   import.meta.env.VITE_ASSISTANT_API_URL || 'http://localhost:8000'
@@ -58,9 +63,7 @@ export function errorText(
     idempotency_conflict: t(
       'Конфликт повторного запроса. Обновите диалог перед новой отправкой.',
     ),
-    bootstrap_required: t(
-      'Для доступа требуется подключение через сайт. Обратитесь к администратору.',
-    ),
+    bootstrap_required: t('Войдите в аккаунт, чтобы начать диалог.'),
   };
   if (labels[error.detail.code]) return labels[error.detail.code];
   if (error.status === 401)
@@ -105,10 +108,16 @@ export function forgetSession() {
 export function saveSession(session: Session) {
   if (!session.session_token || session.user_id || session.access_token) return;
   try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
-      session_id: session.session_id, session_token: session.session_token,
-      expires_at: session.expires_at, locale: session.locale, mode: session.mode,
-    }));
+    sessionStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({
+        session_id: session.session_id,
+        session_token: session.session_token,
+        expires_at: session.expires_at,
+        locale: session.locale,
+        mode: session.mode,
+      }),
+    );
   } catch {
     /* optional storage */
   }
@@ -125,9 +134,17 @@ function retryDelay(value: string | null) {
 }
 export function bearerToken(auth: Session | AccountCredential): string {
   const expiry = 'auth_expires_at' in auth ? auth.auth_expires_at : null;
-  const token = auth.access_token || ('session_token' in auth ? auth.session_token : null);
-  if (!token || Date.parse(auth.expires_at) <= Date.now() || (expiry && Date.parse(expiry) <= Date.now()))
-    throw new ApiError(401, { code: 'session_expired', message: 'Session expired' });
+  const token =
+    auth.access_token || ('session_token' in auth ? auth.session_token : null);
+  if (
+    !token ||
+    Date.parse(auth.expires_at) <= Date.now() ||
+    (expiry && Date.parse(expiry) <= Date.now())
+  )
+    throw new ApiError(401, {
+      code: 'session_expired',
+      message: 'Session expired',
+    });
   return token;
 }
 export async function request<T>(

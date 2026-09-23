@@ -1,0 +1,451 @@
+{
+  "tested_at": "2026-09-23T11:53:39.145420+00:00",
+  "checks": [
+    {
+      "name": "frontend page",
+      "passed": true
+    },
+    {
+      "name": "frontend proxy to assistant",
+      "passed": true
+    },
+    {
+      "name": "catalog readiness",
+      "passed": true
+    },
+    {
+      "name": "live catalog search HTTP",
+      "passed": true
+    },
+    {
+      "name": "real upstream source, partial coverage",
+      "passed": true
+    },
+    {
+      "name": "catalog detail wrapper and identity",
+      "passed": true
+    },
+    {
+      "name": "missing ID preserves sample scope",
+      "passed": true
+    },
+    {
+      "name": "account registration",
+      "passed": true
+    },
+    {
+      "name": "owned conversation creation",
+      "passed": true
+    },
+    {
+      "name": "exact SKU accepted",
+      "passed": true
+    },
+    {
+      "name": "exact SKU completed",
+      "passed": true
+    },
+    {
+      "name": "exact SKU expected retrieval",
+      "passed": true
+    },
+    {
+      "name": "exact SKU expected answer mode",
+      "passed": true
+    },
+    {
+      "name": "exact SKU provenance",
+      "passed": true
+    },
+    {
+      "name": "exact SKU no synthetic fallback",
+      "passed": true
+    },
+    {
+      "name": "exact SKU no false stale warning",
+      "passed": true
+    },
+    {
+      "name": "exact SKU source facts unchanged",
+      "passed": true
+    },
+    {
+      "name": "exact SKU SSE final response",
+      "passed": true
+    },
+    {
+      "name": "owned conversation creation",
+      "passed": true
+    },
+    {
+      "name": "natural-language SKU accepted",
+      "passed": true
+    },
+    {
+      "name": "natural-language SKU completed",
+      "passed": true
+    },
+    {
+      "name": "natural-language SKU expected retrieval",
+      "passed": true
+    },
+    {
+      "name": "natural-language SKU expected answer mode",
+      "passed": true
+    },
+    {
+      "name": "natural-language SKU provenance",
+      "passed": true
+    },
+    {
+      "name": "natural-language SKU no synthetic fallback",
+      "passed": true
+    },
+    {
+      "name": "natural-language SKU no false stale warning",
+      "passed": true
+    },
+    {
+      "name": "natural-language SKU source facts unchanged",
+      "passed": true
+    },
+    {
+      "name": "natural-language SKU SSE final response",
+      "passed": true
+    },
+    {
+      "name": "follow-up detail refresh accepted",
+      "passed": true
+    },
+    {
+      "name": "follow-up detail refresh completed",
+      "passed": true
+    },
+    {
+      "name": "follow-up detail refresh expected retrieval",
+      "passed": true
+    },
+    {
+      "name": "follow-up detail refresh expected answer mode",
+      "passed": true
+    },
+    {
+      "name": "follow-up detail refresh provenance",
+      "passed": true
+    },
+    {
+      "name": "follow-up detail refresh no synthetic fallback",
+      "passed": true
+    },
+    {
+      "name": "follow-up detail refresh no false stale warning",
+      "passed": true
+    },
+    {
+      "name": "follow-up detail refresh source facts unchanged",
+      "passed": true
+    },
+    {
+      "name": "follow-up detail refresh SSE final response",
+      "passed": true
+    },
+    {
+      "name": "owned conversation creation",
+      "passed": true
+    },
+    {
+      "name": "long question accepted",
+      "passed": true
+    },
+    {
+      "name": "long question completed",
+      "passed": true
+    },
+    {
+      "name": "long question expected retrieval",
+      "passed": true
+    },
+    {
+      "name": "long question expected answer mode",
+      "passed": true
+    },
+    {
+      "name": "long question provenance",
+      "passed": true
+    },
+    {
+      "name": "long question no synthetic fallback",
+      "passed": true
+    },
+    {
+      "name": "long question no false stale warning",
+      "passed": true
+    },
+    {
+      "name": "long question source facts unchanged",
+      "passed": true
+    },
+    {
+      "name": "long question SSE final response",
+      "passed": true
+    },
+    {
+      "name": "owned conversation creation",
+      "passed": true
+    },
+    {
+      "name": "empty result accepted",
+      "passed": true
+    },
+    {
+      "name": "empty result completed",
+      "passed": true
+    },
+    {
+      "name": "empty result expected retrieval",
+      "passed": true
+    },
+    {
+      "name": "empty result expected answer mode",
+      "passed": true
+    },
+    {
+      "name": "empty result provenance",
+      "passed": true
+    },
+    {
+      "name": "empty result no synthetic fallback",
+      "passed": true
+    },
+    {
+      "name": "empty result no false stale warning",
+      "passed": true
+    },
+    {
+      "name": "empty result SSE final response",
+      "passed": true
+    },
+    {
+      "name": "owned conversation creation",
+      "passed": true
+    },
+    {
+      "name": "upload XLSX",
+      "passed": true
+    },
+    {
+      "name": "spreadsheet attachment accepted",
+      "passed": true
+    },
+    {
+      "name": "spreadsheet attachment completed",
+      "passed": true
+    },
+    {
+      "name": "spreadsheet attachment expected retrieval",
+      "passed": true
+    },
+    {
+      "name": "spreadsheet attachment expected answer mode",
+      "passed": true
+    },
+    {
+      "name": "spreadsheet attachment provenance",
+      "passed": true
+    },
+    {
+      "name": "spreadsheet attachment no synthetic fallback",
+      "passed": true
+    },
+    {
+      "name": "spreadsheet attachment no false stale warning",
+      "passed": true
+    },
+    {
+      "name": "spreadsheet attachment source facts unchanged",
+      "passed": true
+    },
+    {
+      "name": "spreadsheet attachment SSE final response",
+      "passed": true
+    },
+    {
+      "name": "user chat history",
+      "passed": true
+    },
+    {
+      "name": "account registration",
+      "passed": true
+    },
+    {
+      "name": "cross-user access denied",
+      "passed": true
+    },
+    {
+      "name": "real cart stays disabled",
+      "passed": true
+    },
+    {
+      "name": "logout",
+      "passed": true
+    },
+    {
+      "name": "revoked token rejected",
+      "passed": true
+    }
+  ],
+  "messages": [
+    {
+      "case": "exact SKU",
+      "ack_seconds": 0.114,
+      "complete_seconds": 0.114,
+      "status": "completed",
+      "answer_mode": "grounded_template",
+      "message_id": "b6a435d9af17472f96c2502c4aee0217",
+      "product_ids": [
+        "45357"
+      ],
+      "answer": "ярп4520 — ***LED STARK 30W 2400Lm d98x180 4000K IP20 MEGALIGHT (20). 1810 (валюта неизвестна). Остаток: неизвестен.",
+      "warnings": [
+        "Доступна только часть каталога; отсутствие результата не означает отсутствие товара.",
+        "Доступны данные списка; наличие и валюта цены не подтверждены."
+      ]
+    },
+    {
+      "case": "natural-language SKU",
+      "ack_seconds": 1.553,
+      "complete_seconds": 4.959,
+      "status": "completed",
+      "answer_mode": "model",
+      "message_id": "1a4e59d7d6b5435098272f82df6b9611",
+      "product_ids": [
+        "45357"
+      ],
+      "answer": "Товар ярп4520 — LED STARK 30W 2400Lm d98x180 4000K IP20 MEGALIGHT (20). Цена указана как 1810 (валюта не подтверждена). Наличие товара неизвестно. Источник: EKT_PRODUCT_LIST.",
+      "warnings": [
+        "Доступна только часть каталога; отсутствие результата не означает отсутствие товара.",
+        "Доступны данные списка; наличие и валюта цены не подтверждены."
+      ]
+    },
+    {
+      "case": "follow-up detail refresh",
+      "ack_seconds": 1.513,
+      "complete_seconds": 1.513,
+      "status": "completed",
+      "answer_mode": "model",
+      "message_id": "8f9ffcae184e47f0b926b4d9ec036d00",
+      "product_ids": [
+        "45357"
+      ],
+      "answer": "У товара ярп4520 нет указанных характеристик и сертификатов в предоставленных данных.",
+      "warnings": [
+        "Доступна только часть каталога; отсутствие результата не означает отсутствие товара.",
+        "Доступны данные списка; наличие и валюта цены не подтверждены."
+      ]
+    },
+    {
+      "case": "long question",
+      "ack_seconds": 1.541,
+      "complete_seconds": 1.746,
+      "status": "completed",
+      "answer_mode": "model",
+      "message_id": "74c8fe4bd1694361a83d99478b8d614e",
+      "product_ids": [
+        "45357"
+      ],
+      "answer": "Товар ярп4520 — LED STARK 30W 2400Lm d98x180 4000K IP20 MEGALIGHT (20), цена указана 1810 (валюта не подтверждена). Наличие товара и условия покупки подтверждены не были, статус наличия — UNKNOWN. Информация получена из частичного каталога EKT_PRODUCT_LIST, ссылка на товар: https://ekt.kz/catalog/spets_predlozhenie/aktsiya_megalight_polnyy_sklad_polnyy_bak/_led_stark_30w_2400lm_d98x180_4000k_ip20_megalight_20/.",
+      "warnings": [
+        "Доступна только часть каталога; отсутствие результата не означает отсутствие товара.",
+        "Доступны данные списка; наличие и валюта цены не подтверждены."
+      ]
+    },
+    {
+      "case": "empty result",
+      "ack_seconds": 0.972,
+      "complete_seconds": 0.972,
+      "status": "completed",
+      "answer_mode": "model",
+      "message_id": "c44dd02bd9494c8381e01b42b570108e",
+      "product_ids": [],
+      "answer": "По вашему запросу \"несуществующийтовар\" товары не найдены. Учтите, что была загружена только часть каталога, поэтому отсутствие товара не означает его полного отсутствия.",
+      "warnings": [
+        "Доступна только часть каталога; отсутствие результата не означает отсутствие товара.",
+        "Доступны данные списка; наличие и валюта цены не подтверждены."
+      ]
+    },
+    {
+      "case": "spreadsheet attachment",
+      "ack_seconds": 1.53,
+      "complete_seconds": 1.948,
+      "status": "completed",
+      "answer_mode": "model",
+      "message_id": "76596e8fada54cf18c45da6ae72d00d8",
+      "product_ids": [
+        "45357"
+      ],
+      "answer": "Позиция из спецификации:\n\n- Артикул: ярп4520\n- Количество: 2\n\nТовар найден в каталоге: LED STARK 30W 2400Lm d98x180 4000K IP20 MEGALIGHT (артикул ярп4520) с ценой 1810 (валюта не указана) и неизвестным наличием.",
+      "warnings": [
+        "Использованы сохранённые значения формул; формулы не выполнялись.",
+        "Не найдено запросов из документа: 5. Проверьте распознанные артикулы.",
+        "Доступна только часть каталога; отсутствие результата не означает отсутствие товара.",
+        "Доступны данные списка; наличие и валюта цены не подтверждены."
+      ]
+    }
+  ],
+  "catalog": {
+    "latency_seconds": 0.292,
+    "metadata": {
+      "source": "EKT_PRODUCT_LIST",
+      "mode": "LIVE",
+      "coverage": "PARTIAL",
+      "pages": [
+        1
+      ],
+      "loadedProducts": 20,
+      "totalProducts": null,
+      "observedAt": "2026-09-23T11:53:39.462125385Z",
+      "loadedAt": "2026-09-23T11:53:39.462125385Z",
+      "expiresAt": "2026-09-23T11:54:39.462125385Z",
+      "freshness": "RECENTLY_FETCHED",
+      "detailLevel": "LIST_SUMMARY"
+    }
+  },
+  "product": {
+    "id": "45357",
+    "sku": "ярп4520",
+    "price": {
+      "amount": "1810",
+      "currency": null
+    },
+    "availability": {
+      "status": "UNKNOWN",
+      "quantity": null
+    }
+  },
+  "passed": true,
+  "runtime": {
+    "compose_file": "docker-compose.yml",
+    "services": {
+      "frontend": "healthy",
+      "assistant-service": "healthy",
+      "assistant-worker": "healthy",
+      "ekt-catalog-service": "healthy"
+    },
+    "urls": {
+      "frontend": "http://localhost:5173",
+      "assistant": "http://localhost:8000",
+      "catalog": "http://localhost:8081"
+    },
+    "catalog_fallback_enabled": false,
+    "cart_mode": "disabled",
+    "assistant_model": "gpt-4.1-mini"
+  },
+  "communication": [
+    "Frontend nginx /assistant proxy -> Assistant API:8000",
+    "Assistant API -> shared SQLite job queue -> Assistant worker",
+    "Assistant worker -> GET http://ekt-catalog-service:8080/api/catalog/products?query=<extracted term>",
+    "Assistant worker -> GET http://ekt-catalog-service:8080/api/catalog/products/45357 for contextual detail refresh",
+    "Catalog service -> authenticated GET https://ekt.kz/api/products (page 1)",
+    "Assistant worker -> POST https://api.openai.com/v1/responses -> stored answer -> polling/SSE"
+  ]
+}

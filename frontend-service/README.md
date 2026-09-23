@@ -7,7 +7,7 @@ React, TypeScript and Vite. The standalone storefront preview follows the navy (
 From the repository root:
 
 ```sh
-ASSISTANT_FRONTEND_BASE_URL=http://localhost:5173 docker compose -f assistant-service/compose.yaml up --build -d --wait
+docker compose --env-file assistant-service/.env -f assistant-service/compose.yaml up -d --build --wait
 docker compose -f frontend-service/docker-compose.yml up --build -d --wait frontend
 ```
 
@@ -20,7 +20,7 @@ npm ci
 npm run dev
 ```
 
-`VITE_ASSISTANT_API_URL` defaults to `http://localhost:8000`. Copy `.env.example` to `.env` to configure public settings. Docker passes the public API URL and certificate-origin allowlist as build arguments; rebuild the frontend after changes. Never place model keys, partner passwords or `ASSISTANT_BOOTSTRAP_TOKEN` in frontend configuration. Authenticated deployments require a trusted website BFF for session bootstrap; the direct session creation here targets local demo mode.
+`VITE_ASSISTANT_API_URL` defaults to `http://localhost:8000`. Copy `.env.example` to `.env` to configure public settings. Docker passes the public API URL and certificate-origin allowlist as build arguments; rebuild the frontend after changes. Never place model keys, partner passwords or `ASSISTANT_BOOTSTRAP_TOKEN` in frontend configuration. Account deployments use the register/login endpoints directly. The trusted website BFF bootstrap flow is separate; its secret never belongs in browser code.
 
 Keep `ASSISTANT_FRONTEND_BASE_URL` equal to the actual frontend origin so returned cart links work. The backend must allow that origin through its CORS configuration. The supplied command uses 5173 rather than the backend's default 3000.
 
@@ -28,9 +28,9 @@ The Docker frontend serves a production build through Vite preview for local tes
 
 ## Flows
 
-- Session tokens live in memory and sessionStorage for this tab's reload/cart navigation; never in URLs. Session expiry or forbidden access clears authorized state. Starting a new session never replays a cart confirmation.
+- Guest session tokens live in memory and sessionStorage for this tab; account access tokens stay only in memory. Internal cart navigation preserves login. A full reload or a new tab requires signing in again to restore account history. Tokens never enter URLs. Logout revokes the current account token and clears the active conversation; expiry also clears authorized state. Neither action replays messages or cart confirmations. Guest chats are not claimed at login.
 - Text, attachment-only and mixed messages are supported. Messages poll once per second through terminal status; temporary connection failures preserve the message for reconnection. Retried POSTs keep the exact body and client message ID.
-- Files upload immediately on selection, at most two concurrently. Browser transfer progress and server extraction status are separate. Sending waits for upload acceptance, not extraction. Accepted files remain available for reuse in the same session. History restores attachments referenced by the latest 50 messages after reload.
+- Files upload immediately on selection, at most two concurrently. Browser transfer progress and server extraction status are separate. Sending waits for upload acceptance, not extraction. Accepted files remain available for reuse in the same session. History loads the latest 50 messages and offers older pages, deduplicating by message ID. Restored attachments can be reused while valid; expired content is marked unavailable and must be uploaded again.
 - Supported extensions: XLSX/XLS, DOCX/DOC, PDF, JPEG/JPG, PNG. Maximum 10 MiB per file, 10 files per message, 20 uploads per session. The backend validates signatures and extraction limits. Upload POSTs have no idempotency key and are never retried silently; failed uploads require manual removal/reselection.
 - Product cards show prices, stock by warehouse, attributes, freshness, certificates and source. Unknown values stay unknown. Decimal quantity validation checks minimum, step and known available stock without floating-point rounding.
 - Selection is unique per product/warehouse. Re-selecting updates that row. Requesting a quote does not change the cart. Users review the exact product, quantity, unit, warehouse and price before pressing **Добавить в корзину**. Transport retries reuse the original confirmation key/body; edits require a new proposal. Stock/price changes invalidate the proposal; use **Обновить товары и остатки** and review again.
@@ -63,6 +63,8 @@ Automated accessibility checks are a baseline, not a full audit. Lighthouse CI a
 - `src/api/`: Assistant API types, authenticated requests, upload progress and link validation.
 - `src/features/chat/`: session/async workflow hook, widget, product cards and quantity validation.
 - `src/features/cart/`: lazy cart route and quote display.
+- `src/features/auth/`: memory-only account authentication and accessible register/login forms.
+- `src/i18n/`: typed RU/KZ interface dictionaries.
 - `src/app/`, `src/components/`, `src/styles/`: demo page, icons and responsive styles.
 - `e2e/`: deterministic browser tests; unit tests live under `src/`.
 
@@ -80,7 +82,7 @@ date formatting). The preference is stored in `localStorage` under
 switching still works for the current page.
 
 Switching does not reset the session, draft, selected products, or pending
-confirmation. Session credentials remain in `sessionStorage`. API replies,
+confirmation. Only guest session credentials remain in `sessionStorage`; account credentials stay in memory. API replies,
 product names, attribute values, quantities, units, prices, source content,
 and server-provided warnings/errors are rendered as supplied. UI explanations
 for known error codes are localized. The backend currently accepts only
@@ -89,3 +91,63 @@ for known error codes are localized. The backend currently accepts only
 Translations live in `src/i18n/messages.ts`; Russian source strings are typed
 keys with a Kazakh translation for every key. Translate frontend copy only,
 never arbitrary API or user text.
+
+## Accounts and history integration
+
+The chat account panel implements register, login, profile (`GET /v1/auth/me`),
+and logout. Owned conversations use the account bearer token even though their
+`session_token` is null. **Мои диалоги** lists conversations newest first with
+50-item offset pages; selecting one restores its messages. **Новый диалог**
+creates a separate owned conversation. Older message pages are prepended and
+deduplicated, including overlapping offset pages.
+
+Conversation deletion requires a separate confirmation before the DELETE
+request. Deletion and logout both accept HTTP 204 without attempting JSON
+parsing. Logout keeps server history; deletion removes it permanently and does
+not reverse earlier inventory changes. The backend currently retains account
+history for 30 days from conversation creation, and attachment content for at
+most 24 hours. Retention is configurable on the backend.
+
+See [AUTHENTICATION.md](../assistant-service/AUTHENTICATION.md) for the endpoint
+contract and account limitations.
+
+## HTTP catalog and rebuild
+
+The frontend supports both standalone demo products and the HTTP Catalog
+contract described in [CATALOG_INTEGRATION.md](../assistant-service/CATALOG_INTEGRATION.md).
+Missing currency, price, unit and stock remain unknown; metadata shows source,
+partial coverage, detail level and freshness. Snapshot load time is not shown
+as a stock observation. Synthetic fallback products remain labelled as fixtures.
+Products with catalog metadata cannot be selected for a cart, and a backend
+`cart_not_configured` response disables the cart flow.
+
+To use the documented **offline HTTP fallback**, edit only these settings in
+`assistant-service/.env`, preserving existing model credentials:
+
+```dotenv
+ASSISTANT_CATALOG_MODE=http
+ASSISTANT_CATALOG_BASE_URL=http://catalog-service:8000
+ASSISTANT_CATALOG_MOCK_ON_UNAVAILABLE=true
+ASSISTANT_CART_MODE=disabled
+```
+
+The hostname is an example: use the actual Catalog service address when
+available. Fallback is development-only and prohibited in production. Rebuild
+both the API/worker and the frontend after configuration/code changes:
+
+```sh
+docker compose --env-file assistant-service/.env -f assistant-service/compose.yaml up -d --build --wait
+docker compose -f frontend-service/docker-compose.yml up -d --build --wait frontend
+```
+
+These standalone commands preserve the configured mode; they do not enable
+HTTP mode automatically. For the root production stack, follow the root
+[deployment guide](../deploy.md), whose frontend uses the same-origin
+`/assistant` proxy and whose live Catalog cart remains disabled. To rebuild only that stack's frontend
+without restarting its API or Catalog service:
+
+```sh
+docker compose up -d --build --no-deps --wait frontend
+```
+
+Do not run the standalone and root stacks on the same host ports at once.

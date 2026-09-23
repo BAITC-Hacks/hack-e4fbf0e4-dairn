@@ -1,6 +1,6 @@
 # Catalog service integration
 
-The supplied examples define the current communication contract. `catalog-service/docs/api-findings.md` documents upstream research and cautions about missing currency, stock, compatibility and detail evidence; it does not confirm a running Catalog HTTP service. This update was tested with HTTP mock transports, without contacting that service.
+The supplied examples define the current communication contract. `ekt-catalog-service/docs/api-findings.md` documents upstream research and cautions about missing currency, stock, compatibility and detail evidence; it does not confirm a running Catalog HTTP service. The root Compose stack was live-tested on 2026-09-23 against EKT and OpenAI; see [LIVE_TEST_REPORT.md](LIVE_TEST_REPORT.md). The standalone Assistant Compose file still supports offline development.
 
 | Operation | Request | Response |
 |---|---|---|
@@ -9,11 +9,11 @@ The supplied examples define the current communication contract. `catalog-servic
 
 The base URL is the origin (do not append `/api/catalog`). Query encoding is handled by httpx; product IDs are path-encoded. No unconfirmed pagination or limit parameters are sent. Assistant currently presents at most five search results. Optional configured internal Bearer authentication is retained; upstream EKT Basic Auth does not belong in Assistant.
 
-Wire validation lives in `app/integrations/catalog_schema.py`. Products preserve `id`, `sku`, `name`, nullable `price` with nullable currency, `images`, nullable `pageUrl`, and `availability: {status, quantity}`. Envelope metadata is copied to each returned product as `catalog_metadata` and to chat source records as `metadata`.
+Wire validation lives in `app/integrations/catalog_schema.py`. Products preserve `id`, nullable `sku`, `name`, nullable `price` with nullable currency, `images`, nullable `pageUrl`, and `availability: {status, quantity}`. Envelope metadata is copied to each returned product as `catalog_metadata` and to chat source records as `metadata`, including searches with no products. Live `RECENTLY_FETCHED` data is considered current only until its valid `expiresAt`; this does not establish stock or currency.
 
 Unknown quantity is not zero; unknown currency is not KZT. Snapshot load time is not stock observation time. No warehouse, characteristics, certificates, units or compatibility facts are invented. Internal `stock`, `attributes`, and `certificates` are empty, `observed_at` uses only `observedAt`, and unconfirmed freshness sets the conservative internal `stale` flag. Extra upstream fields are retained, but do not establish compatibility rules.
 
-There is no confirmed alternatives or availability-check endpoint in this contract. HTTP mode returns no verified analogs and rejects availability checks; cart operations remain disabled. The standalone `demo` mode retains its existing three breaker fixtures and confirmed demo-cart workflow.
+The current Catalog offers `/api/catalog/products/{id}/availability` with unknown stock, and `/api/catalog/products/{id}/analogs` rejects requests because compatibility data is insufficient. There is no quantity-validation/reservation endpoint. HTTP mode returns no verified analogs and rejects availability checks; cart operations remain disabled. The standalone `demo` mode retains its existing three breaker fixtures and confirmed demo-cart workflow.
 
 ## Offline development
 
@@ -44,4 +44,4 @@ The fixture contains 12 entries: five cables, two breakers, three lighting produ
 .venv/bin/python -m pytest -q -c assistant-service/pyproject.toml assistant-service/tests
 ```
 
-Contract tests check exact paths/query names, envelopes, nullable values and metadata, connection fallback, fail-closed HTTP/schema errors, production restrictions, and complete offline chat output. They do not verify a live Catalog deployment.
+Contract tests check exact paths/query names, envelopes, nullable values and metadata, connection fallback, fail-closed HTTP/schema errors, production restrictions, and complete offline chat output. The separate opt-in `tests/live_stack_smoke.py` checks the running root Compose stack. Natural questions are converted to bounded literal search phrases/SKUs (up to four for the message); queries are sanitized to the provider limit of 200 UTF-16 units. Full user wording is retained for answer generation, with no extra model call. This remains a simple retrieval strategy, not semantic search.

@@ -1,14 +1,20 @@
+import { AppLink } from '../../app/navigation';
+import { useAuth } from '../auth/AuthProvider';
+import { AccountPanel } from '../auth/AccountPanel';
+import { ConversationList } from './ConversationList';
 import { useLocale } from '../../i18n/LocaleProvider';
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { safeLink } from '../../api/client';
 import { QuoteRows } from '../cart/QuoteRows';
-import { ProductCard } from './ProductCard';
-import { useAssistant } from './useAssistant';
+import { ProductCard, CatalogMetadataDetails } from './ProductCard';
+import type { useAssistant } from './useAssistant';
 interface ChatWidgetProps {
   prompt: { text: string; id: number };
+  assistant: ReturnType<typeof useAssistant>;
+  hidden: boolean;
 }
-export function ChatWidget({ prompt }: ChatWidgetProps) {
+export function ChatWidget({ prompt, assistant, hidden }: ChatWidgetProps) {
   const { t, dateLocale } = useLocale();
   const statuses: Record<string, string> = {
     queued: t('Запрос в очереди…'),
@@ -17,9 +23,14 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
     completed: t('Готово'),
     failed: t('Не удалось обработать запрос'),
   };
-  const assistant = useAssistant();
+  const { user } = useAuth();
   const [open, setOpen] = useState(true);
   const [draft, setDraft] = useState('');
+  const [draftSession, setDraftSession] = useState<string | null>(null);
+  if (assistant.session && assistant.session.session_id !== draftSession) {
+    setDraftSession(assistant.session.session_id);
+    if (draftSession) setDraft('');
+  }
   const [seenPrompt, setSeenPrompt] = useState(prompt.id);
   if (seenPrompt !== prompt.id) {
     setSeenPrompt(prompt.id);
@@ -48,25 +59,26 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
     ? safeLink(assistant.cart.cart_url, 'cart')
     : null;
   useEffect(() => {
-    if (open) input.current?.focus({ preventScroll: true });
-  }, [open, prompt.id, assistant.connecting]);
+    if (open && !hidden) input.current?.focus({ preventScroll: true });
+  }, [open, hidden, prompt.id, assistant.connecting]);
   useEffect(() => {
     const onEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && open) {
+      if (event.key === 'Escape' && open && !hidden) {
         setOpen(false);
         launcher.current?.focus({ preventScroll: true });
       }
     };
     document.addEventListener('keydown', onEscape);
     return () => document.removeEventListener('keydown', onEscape);
-  }, [open]);
+  }, [open, hidden]);
   useEffect(() => {
-    if (open && transcript.current)
+    if (open && !assistant.historyBusy && transcript.current)
       transcript.current.scrollTop = assistant.messages.length
         ? transcript.current.scrollHeight
         : 0;
   }, [
     assistant.messages,
+    assistant.historyBusy,
     assistant.selected,
     assistant.proposal,
     assistant.cart,
@@ -75,6 +87,17 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
   function close() {
     setOpen(false);
     launcher.current?.focus({ preventScroll: true });
+  }
+  async function loadOlder() {
+    const before = transcript.current;
+    const height = before?.scrollHeight || 0;
+    const top = before?.scrollTop || 0;
+    await assistant.loadOlder();
+    requestAnimationFrame(() => {
+      if (transcript.current)
+        transcript.current.scrollTop =
+          top + transcript.current.scrollHeight - height;
+    });
   }
   async function send() {
     if (canSend && (await assistant.send(draft))) setDraft('');
@@ -85,7 +108,7 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
         className="chat-widget"
         role="dialog"
         aria-labelledby="assistant-title"
-        hidden={!open}
+        hidden={!open || hidden}
       >
         <header className="chat-header">
           <span className="assistant-avatar">
@@ -122,8 +145,13 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
             {t('Новый диалог')}
           </button>
         </div>
-        {(assistant.session?.mode === 'demo' ||
-          assistant.cart?.mode === 'demo') && (
+        {(assistant.cart?.mode === 'demo' ||
+          assistant.messages.some((message) =>
+            message.products.some(
+              (product) =>
+                product.source === 'synthetic' && !product.catalog_metadata,
+            ),
+          )) && (
           <div className="demo-banner">
             {t('Демо-режим · цены, остатки и корзина тестовые')}
           </div>
@@ -136,6 +164,24 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
           tabIndex={0}
           aria-label={t('История диалога')}
         >
+          <AccountPanel />
+          {user && <ConversationList assistant={assistant} />}
+          {assistant.hasOlder && (
+            <button
+              className="secondary full-width"
+              disabled={assistant.historyBusy || assistant.busy}
+              onClick={() => void loadOlder()}
+            >
+              {t('Загрузить предыдущие сообщения')}
+            </button>
+          )}
+          {assistant.historyNotice && (
+            <p className="warning">
+              {t(
+                'Часть файлов из истории больше недоступна. При необходимости прикрепите их заново.',
+              )}
+            </p>
+          )}
           {!assistant.messages.length && (
             <div className="welcome">
               <span className="welcome-icon">
@@ -272,6 +318,11 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
                           {source.kind}: {source.reference}
                           {source.observed_at &&
                             ` · ${new Date(source.observed_at).toLocaleString(dateLocale)}`}
+                          {source.metadata && (
+                            <CatalogMetadataDetails
+                              metadata={source.metadata}
+                            />
+                          )}
                           {source.version &&
                             t(' · версия {version}', {
                               version: source.version,
@@ -402,9 +453,9 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
               <strong>{t('Добавлено в демо-корзину')}</strong>
               <QuoteRows items={assistant.cart.items} />
               {cartLink ? (
-                <a className="primary full-width" href={cartLink}>
+                <AppLink className="primary full-width" href={cartLink}>
                   {t('Открыть корзину')} <Icon name="arrow" size={16} />
-                </a>
+                </AppLink>
               ) : (
                 <p className="warning">
                   {t(
@@ -596,6 +647,7 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
         </div>
       </section>
       <button
+        hidden={hidden}
         ref={launcher}
         className={`chat-launcher ${open ? 'is-open' : ''}`}
         aria-label={open ? t('Свернуть помощника') : t('Открыть помощника')}

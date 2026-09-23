@@ -1,5 +1,12 @@
+import { catalogMessages } from './catalogMessages';
+import { authMessages } from './authMessages';
+import { historyMessages } from './historyMessages';
+
 // Only interface copy belongs here. Never pass API content through this dictionary.
 export const kazakh = {
+  ...authMessages,
+  ...catalogMessages,
+  ...historyMessages,
   'Кабель и провод': 'Кабель және сым',
   'Для надёжных соединений': 'Сенімді қосылыстар үшін',
   'Помогите подобрать кабель': 'Кабель таңдауға көмектесіңіз',

@@ -1,4 +1,4 @@
-import { useAuth } from "../auth/AuthProvider";
+import { useAuth } from '../auth/AuthProvider';
 import { useLocale } from '../../i18n/LocaleProvider';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import {
@@ -108,6 +108,7 @@ export function useAssistant() {
       }
     }
   }
+  const failFromEffect = useEffectEvent(fail);
   const pumpOnTick = useEffectEvent(() => {
     void pumpUploads();
   });
@@ -117,21 +118,41 @@ export function useAssistant() {
     let interval: ReturnType<typeof setTimeout>;
     async function start() {
       try {
+        if (credential) forgetSession();
         let chosen = targetSession.current;
         if (credential && !chosen && !createNew.current) {
-          const list = await request<Conversation[]>('/v1/sessions?limit=50&offset=0', credential, abort.signal);
+          const list = await request<Conversation[]>(
+            '/v1/sessions?limit=50&offset=0',
+            credential,
+            abort.signal,
+          );
           if (abort.signal.aborted) return;
           setConversations(list);
           setMoreConversations(list.length === 50);
           conversationOffset.current = 50;
           chosen = list[0] || null;
         }
-        const restored = credential ? chosen : readSession();
-        const result = restored || await request<Session>('/v1/sessions', credential, abort.signal, { locale: 'ru' });
+        const restoredSession = credential ? chosen : readSession();
+        const result =
+          restoredSession ||
+          (await request<Session>('/v1/sessions', credential, abort.signal, {
+            locale: 'ru',
+          }));
         const active: Session = credential
-          ? { ...result, session_token: null, access_token: credential.access_token, auth_expires_at: credential.expires_at }
+          ? {
+              ...result,
+              session_token: null,
+              access_token: credential.access_token,
+              auth_expires_at: credential.expires_at,
+            }
           : result;
-        if (credential && !restored) setConversations((items) => [active as Conversation, ...items.filter((item) => item.session_id !== active.session_id)]);
+        if (credential && !restoredSession && createNew.current)
+          conversationOffset.current += 1;
+        if (credential && !restoredSession)
+          setConversations((items) => [
+            active as Conversation,
+            ...items.filter((item) => item.session_id !== active.session_id),
+          ]);
         if (abort.signal.aborted) return;
         saveSession(active);
         setSession(active);
@@ -147,8 +168,8 @@ export function useAssistant() {
         setMessages(history);
         state.current.messages = history;
         const ids = [...new Set(history.flatMap((m) => m.attachment_ids))];
-        uploadedCount.current = ids.length;
-        const restored: FileItem[] = [];
+        uploadedCount.current = 0;
+        const restoredFiles: FileItem[] = [];
         for (const id of ids) {
           try {
             const attachment = await request<Attachment>(
@@ -156,7 +177,7 @@ export function useAssistant() {
               active,
               abort.signal,
             );
-            restored.push({
+            restoredFiles.push({
               key: id,
               filename: attachment.filename,
               progress: 100,
@@ -174,11 +195,12 @@ export function useAssistant() {
           }
         }
         if (!abort.signal.aborted) {
-          setFiles(restored);
-          state.current.files = restored;
+          uploadedCount.current = restoredFiles.length;
+          setFiles(restoredFiles);
+          state.current.files = restoredFiles;
         }
       } catch (cause) {
-        if (!abort.signal.aborted) fail(cause);
+        if (!abort.signal.aborted) failFromEffect(cause);
       } finally {
         if (!abort.signal.aborted) setConnecting(false);
       }
@@ -228,7 +250,7 @@ export function useAssistant() {
               );
           }
         } catch (cause) {
-          if (!abort.signal.aborted) fail(cause);
+          if (!abort.signal.aborted) failFromEffect(cause);
         }
       }
       if (!abort.signal.aborted) {
@@ -545,29 +567,65 @@ export function useAssistant() {
     historyLock.current = true;
     setHistoryBusy(true);
     try {
-      const older = await request<Message[]>(`${sessionPath(session)}/messages?limit=50&offset=${historyOffset.current}`, session, abort.signal);
+      const older = await request<Message[]>(
+        `${sessionPath(session)}/messages?limit=50&offset=${historyOffset.current}`,
+        session,
+        abort.signal,
+      );
       if (abort.signal.aborted) return;
       historyOffset.current += 50;
       setHasOlder(older.length === 50);
-      setMessages((items) => [...new Map([...older, ...items].map((item) => [item.message_id, item])).values()]);
-      const known = new Set(state.current.files.map((f) => f.attachment?.attachment_id));
-      const ids = [...new Set(older.flatMap((m) => m.attachment_ids))].filter((id) => !known.has(id));
+      setMessages((items) => [
+        ...new Map(
+          [...older, ...items].map((item) => [item.message_id, item]),
+        ).values(),
+      ]);
+      const known = new Set(
+        state.current.files.map((f) => f.attachment?.attachment_id),
+      );
+      const ids = [...new Set(older.flatMap((m) => m.attachment_ids))].filter(
+        (id) => !known.has(id),
+      );
       const restored: FileItem[] = [];
       for (const id of ids) {
         try {
-          const attachment = await request<Attachment>(`${sessionPath(session)}/attachments/${encodeURIComponent(id)}`, session, abort.signal);
-          restored.push({key: id, filename: attachment.filename, progress: 100, phase: 'accepted', attachment, selected: false});
+          const attachment = await request<Attachment>(
+            `${sessionPath(session)}/attachments/${encodeURIComponent(id)}`,
+            session,
+            abort.signal,
+          );
+          restored.push({
+            key: id,
+            filename: attachment.filename,
+            progress: 100,
+            phase: 'accepted',
+            attachment,
+            selected: false,
+          });
         } catch (cause) {
-          if (cause instanceof ApiError && [401,403,429].includes(cause.status)) throw cause;
+          if (
+            cause instanceof ApiError &&
+            [401, 403, 429].includes(cause.status)
+          )
+            throw cause;
           if (!abort.signal.aborted) setHistoryNotice(true);
         }
       }
       if (!abort.signal.aborted) {
         uploadedCount.current += restored.length;
-        setFiles((items) => [...items, ...restored.filter((f) => !items.some((item) => item.key === f.key))]);
+        setFiles((items) => [
+          ...items,
+          ...restored.filter((f) => !items.some((item) => item.key === f.key)),
+        ]);
       }
-    } catch (cause) { if (!abort.signal.aborted) fail(cause); }
-    finally { if (!abort.signal.aborted) { historyLock.current = false; setHistoryBusy(false); } }
+    } catch (cause) {
+      if (!abort.signal.aborted) fail(cause);
+    } finally {
+      if (!abort.signal.aborted) {
+        historyLock.current = false;
+        setHistoryBusy(false);
+      }
+    }
   }
   async function loadMoreConversations() {
     if (!credential || historyLock.current) return;
@@ -575,28 +633,64 @@ export function useAssistant() {
     historyLock.current = true;
     setHistoryBusy(true);
     try {
-      const list = await request<Conversation[]>(`/v1/sessions?limit=50&offset=${conversationOffset.current}`, credential, abort.signal);
+      const list = await request<Conversation[]>(
+        `/v1/sessions?limit=50&offset=${conversationOffset.current}`,
+        credential,
+        abort.signal,
+      );
       if (abort.signal.aborted) return;
       conversationOffset.current += 50;
       setMoreConversations(list.length === 50);
-      setConversations((items) => [...new Map([...items, ...list].map((item) => [item.session_id, item])).values()]);
-    } catch (cause) { if (!abort.signal.aborted) fail(cause); }
-    finally { if (!abort.signal.aborted) { historyLock.current = false; setHistoryBusy(false); } }
+      setConversations((items) => [
+        ...new Map(
+          [...items, ...list].map((item) => [item.session_id, item]),
+        ).values(),
+      ]);
+    } catch (cause) {
+      if (!abort.signal.aborted) fail(cause);
+    } finally {
+      if (!abort.signal.aborted) {
+        historyLock.current = false;
+        setHistoryBusy(false);
+      }
+    }
   }
   async function deleteConversation(id: string) {
-    if (!credential || historyLock.current || busy || confirmation.current || files.some((f) => f.phase === 'uploading')) return false;
+    if (
+      !credential ||
+      historyLock.current ||
+      busy ||
+      confirmation.current ||
+      files.some((f) => f.phase === 'uploading')
+    )
+      return false;
     const abort = controller.current;
     historyLock.current = true;
     setHistoryBusy(true);
     try {
-      await request<void>(`/v1/sessions/${encodeURIComponent(id)}`, credential, abort.signal, undefined, undefined, 'DELETE');
+      await request<void>(
+        `/v1/sessions/${encodeURIComponent(id)}`,
+        credential,
+        abort.signal,
+        undefined,
+        undefined,
+        'DELETE',
+      );
       if (abort.signal.aborted) return false;
       const remaining = conversations.filter((item) => item.session_id !== id);
+      conversationOffset.current = Math.max(0, conversationOffset.current - 1);
       setConversations(remaining);
       if (session?.session_id === id) reset(remaining[0]);
       return true;
-    } catch (cause) { if (!abort.signal.aborted) fail(cause); return false; }
-    finally { if (!abort.signal.aborted) { historyLock.current = false; setHistoryBusy(false); } }
+    } catch (cause) {
+      if (!abort.signal.aborted) fail(cause);
+      return false;
+    } finally {
+      if (!abort.signal.aborted) {
+        historyLock.current = false;
+        setHistoryBusy(false);
+      }
+    }
   }
   function editProposal() {
     if (!busy && !confirmation.current) setProposal(null);
