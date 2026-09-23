@@ -1,0 +1,7 @@
+.git
+.harness
+harness/
+__pycache__
+.pytest_cache
+*.pyc
+deploy.md

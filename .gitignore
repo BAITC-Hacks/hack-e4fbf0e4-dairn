@@ -1,0 +1,13 @@
+.harness
+.venv
+__pycache__/
+*.py[cod]
+*.egg-info/
+examples
+prompts
+schemas
+scripts
+src/
+contracts/
+docs/
+planning/

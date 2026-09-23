@@ -1,0 +1,14 @@
+services:
+  harness:
+    build: .
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: ["python", "-m", "harness.cli"]
+    command: ["--help"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import harness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
