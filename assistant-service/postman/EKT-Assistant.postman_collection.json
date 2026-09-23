@@ -1,0 +1,906 @@
+{
+  "info": {
+    "_postman_id": "9c2bcd21-169f-43d3-99d9-4a3d67cca26d",
+    "name": "EKT Assistant — Local API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "All 18 business/health operations plus attachment-message example and API schema. No environment file needed: collection variables capture tokens and IDs automatically. Start with Create session. Select your own file for Upload. Cart confirmation modifies synthetic demo inventory; send it only after reviewing the proposal. Use individual requests/folders rather than blindly running the whole collection. Message/confirmation retry keys persist until their payload changes. SSE emits snapshots, not token deltas. Local API defaults to http://localhost:8000. Account/history folder supports registration, login, owned conversations and logout; configure username/password variables locally. Do not export populated credentials."
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{session_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "session_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attachment_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attachment_status",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "message_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "message_status",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "proposal_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "proposal_version",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "confirmation_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "operation_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cart_url",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "message_text",
+      "value": "Есть ли в наличии DEMO-C16-OLD? Предложите аналог.",
+      "type": "string"
+    },
+    {
+      "key": "attachment_message_text",
+      "value": "Проверьте наличие товаров из этого документа.",
+      "type": "string"
+    },
+    {
+      "key": "product_id",
+      "value": "demo-1",
+      "type": "string"
+    },
+    {
+      "key": "warehouse_id",
+      "value": "demo-almaty",
+      "type": "string"
+    },
+    {
+      "key": "quantity",
+      "value": "2",
+      "type": "string"
+    },
+    {
+      "key": "text_client_message_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attachment_client_message_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "confirmation_key",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "_text_signature",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "_attachment_signature",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "_confirmation_signature",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "display_name",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "for (const variable of pm.collectionVariables.toObject ? Object.keys(pm.collectionVariables.toObject()) : []) {",
+          "  pm.variables.set(variable, pm.collectionVariables.get(variable));",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test(\"HTTP success\", () => pm.expect(pm.response.code).to.be.within(200, 299));",
+          "if (pm.response.code >= 200 && pm.response.code < 300) {",
+          "  let data;",
+          "  try { data = pm.response.json(); } catch (_) { data = null; }",
+          "  if (data && !Array.isArray(data)) {",
+          "    for (const key of [\"attachment_id\", \"message_id\", \"operation_id\", \"cart_url\"]) {",
+          "      if (data[key]) pm.collectionVariables.set(key, String(data[key]));",
+          "    }",
+          "    if (data.attachment_id && data.status) pm.collectionVariables.set(\"attachment_status\", data.status);",
+          "    if (data.message_id && data.status) pm.collectionVariables.set(\"message_status\", data.status);",
+          "    if (data.cart && data.cart.cart_url) pm.collectionVariables.set(\"cart_url\", data.cart.cart_url);",
+          "    if (data.status === \"failed\") pm.test(\"Processing succeeded\", () => pm.expect.fail(data.error ? data.error.message : \"Processing failed\"));",
+          "  }",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 — Start here",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/health/live",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create session — captures token and clears previous IDs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/v1/sessions",
+            "description": "Run this first. Local demo sessions do not require a bootstrap token. Never put a production bootstrap secret in a browser.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locale\": \"ru\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  const reset = [\"attachment_id\", \"attachment_status\", \"message_id\", \"message_status\", \"proposal_id\", \"proposal_version\", \"confirmation_token\", \"operation_id\", \"cart_url\", \"text_client_message_id\", \"attachment_client_message_id\", \"confirmation_key\", \"_text_signature\", \"_attachment_signature\", \"_confirmation_signature\"];",
+                  "  reset.forEach(key => pm.collectionVariables.set(key, \"\"));",
+                  "  pm.collectionVariables.set(\"session_id\", data.session_id);",
+                  "  pm.collectionVariables.set(\"session_token\", data.session_token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 — Chat",
+      "item": [
+        {
+          "name": "Send text message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/v1/sessions/{{session_id}}/messages",
+            "description": "Edit message_text in collection Variables. ID remains stable for identical retries. To send identical text as a new turn, clear text_client_message_id. Response auto-saves message_id.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_message_id\": \"{{text_client_message_id}}\",\n  \"text\": \"{{message_text}}\",\n  \"attachment_ids\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"session_id\")) throw new Error(\"Missing session_id: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"session_token\")) throw new Error(\"Missing session_token: run the preceding create/upload/send request first.\");",
+                  "const payload = {text: pm.collectionVariables.get(\"message_text\") || \"\", attachment_ids: [] };",
+                  "const signature = JSON.stringify({session: pm.collectionVariables.get(\"session_id\"), ...payload});",
+                  "if (pm.collectionVariables.get(\"_text_signature\") !== signature || !pm.collectionVariables.get(\"text_client_message_id\")) {",
+                  "  pm.collectionVariables.set(\"text_client_message_id\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "  pm.collectionVariables.set(\"_text_signature\", signature);",
+                  "}",
+                  "payload.client_message_id = pm.collectionVariables.get(\"text_client_message_id\");",
+                  "pm.request.body.update(JSON.stringify(payload));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get latest message result",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/v1/sessions/{{session_id}}/messages/{{message_id}}",
+            "description": "Send again until status is completed or failed. A queued result is not a finished answer."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"session_id\")) throw new Error(\"Missing session_id: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"session_token\")) throw new Error(\"Missing session_token: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"message_id\")) throw new Error(\"Missing message_id: run the preceding create/upload/send request first.\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stream latest message updates — SSE",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": "{{base_url}}/v1/sessions/{{session_id}}/messages/{{message_id}}/events",
+            "description": "Uses inherited Bearer auth. Terminal snapshots close the stream; otherwise it closes after 30 seconds. Re-send or poll to resume."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"session_id\")) throw new Error(\"Missing session_id: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"session_token\")) throw new Error(\"Missing session_token: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"message_id\")) throw new Error(\"Missing message_id: run the preceding create/upload/send request first.\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conversation history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/v1/sessions/{{session_id}}/messages?limit=50",
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"session_id\")) throw new Error(\"Missing session_id: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"session_token\")) throw new Error(\"Missing session_token: run the preceding create/upload/send request first.\");"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 — Attachments (choose a local file)",
+      "item": [
+        {
+          "name": "Upload file — choose Body > form-data > file",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/v1/sessions/{{session_id}}/attachments",
+            "description": "Select XLSX, XLS, DOCX, DOC, PDF, JPEG/JPG or PNG. Up to 10 MiB. The latest attachment_id is captured automatically. Do not set a multipart Content-Type manually.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": null
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"session_id\")) throw new Error(\"Missing session_id: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"session_token\")) throw new Error(\"Missing session_token: run the preceding create/upload/send request first.\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get latest attachment status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/v1/sessions/{{session_id}}/attachments/{{attachment_id}}",
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"session_id\")) throw new Error(\"Missing session_id: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"session_token\")) throw new Error(\"Missing session_token: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"attachment_id\")) throw new Error(\"Missing attachment_id: run the preceding create/upload/send request first.\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send message with latest attachment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/v1/sessions/{{session_id}}/messages",
+            "description": "The worker waits for extraction if needed. Set attachment_message_text to empty for an attachment-only message. Response captures message_id; use Chat result/SSE requests to view it.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_message_id\": \"{{attachment_client_message_id}}\",\n  \"text\": \"{{attachment_message_text}}\",\n  \"attachment_ids\": [\n    \"{{attachment_id}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"session_id\")) throw new Error(\"Missing session_id: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"session_token\")) throw new Error(\"Missing session_token: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"attachment_id\")) throw new Error(\"Missing attachment_id: run the preceding create/upload/send request first.\");",
+                  "const payload = {text: pm.collectionVariables.get(\"attachment_message_text\") || \"\", attachment_ids: [pm.collectionVariables.get(\"attachment_id\")] };",
+                  "const signature = JSON.stringify({session: pm.collectionVariables.get(\"session_id\"), ...payload});",
+                  "if (pm.collectionVariables.get(\"_attachment_signature\") !== signature || !pm.collectionVariables.get(\"attachment_client_message_id\")) {",
+                  "  pm.collectionVariables.set(\"attachment_client_message_id\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "  pm.collectionVariables.set(\"_attachment_signature\", signature);",
+                  "}",
+                  "payload.client_message_id = pm.collectionVariables.get(\"attachment_client_message_id\");",
+                  "pm.request.body.update(JSON.stringify(payload));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 — Demo cart (review before confirming)",
+      "item": [
+        {
+          "name": "Read current cart",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/v1/sessions/{{session_id}}/cart",
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"session_id\")) throw new Error(\"Missing session_id: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"session_token\")) throw new Error(\"Missing session_token: run the preceding create/upload/send request first.\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create proposal — no cart change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/v1/sessions/{{session_id}}/cart/proposals",
+            "description": "Defaults: demo-1, demo-almaty, quantity 2. Edit collection variables to change. A new proposal supersedes the previous pending proposal and expires after about 5 minutes.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"product_id\": \"{{product_id}}\",\n      \"warehouse_id\": \"{{warehouse_id}}\",\n      \"quantity\": \"{{quantity}}\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"session_id\")) throw new Error(\"Missing session_id: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"session_token\")) throw new Error(\"Missing session_token: run the preceding create/upload/send request first.\");",
+                  "pm.request.body.update(JSON.stringify({items:[{product_id:pm.collectionVariables.get(\"product_id\"),warehouse_id:pm.collectionVariables.get(\"warehouse_id\"),quantity:pm.collectionVariables.get(\"quantity\")}]}));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set(\"proposal_id\", data.proposal_id);",
+                  "  pm.collectionVariables.set(\"proposal_version\", String(data.version));",
+                  "  pm.collectionVariables.set(\"confirmation_token\", data.confirmation_token);",
+                  "  [\"confirmation_key\", \"_confirmation_signature\", \"operation_id\", \"cart_url\"].forEach(key => pm.collectionVariables.set(key, \"\"));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CONFIRM proposal — changes demo cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{confirmation_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/v1/sessions/{{session_id}}/cart/proposals/{{proposal_id}}/confirm",
+            "description": "Review the proposal before sending. The pre-request script inserts a numeric version and a stable idempotency key. Re-sending is a safe retry of this same confirmation. A new proposal generates a new key. Saves operation_id and cart_url.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"proposal_version\": \"{{proposal_version}}\",\n  \"confirmation_token\": \"{{confirmation_token}}\",\n  \"confirmed\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"session_id\")) throw new Error(\"Missing session_id: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"session_token\")) throw new Error(\"Missing session_token: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"proposal_id\")) throw new Error(\"Missing proposal_id: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"proposal_version\")) throw new Error(\"Missing proposal_version: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"confirmation_token\")) throw new Error(\"Missing confirmation_token: run the preceding create/upload/send request first.\");",
+                  "const payload = {",
+                  "  proposal_version: Number(pm.collectionVariables.get(\"proposal_version\")),",
+                  "  confirmation_token: pm.collectionVariables.get(\"confirmation_token\"),",
+                  "  confirmed: true",
+                  "};",
+                  "const signature = JSON.stringify({session: pm.collectionVariables.get(\"session_id\"), proposal: pm.collectionVariables.get(\"proposal_id\"), ...payload});",
+                  "if (pm.collectionVariables.get(\"_confirmation_signature\") !== signature || !pm.collectionVariables.get(\"confirmation_key\")) {",
+                  "  pm.collectionVariables.set(\"confirmation_key\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "  pm.collectionVariables.set(\"_confirmation_signature\", signature);",
+                  "}",
+                  "pm.variables.set(\"confirmation_key\", pm.collectionVariables.get(\"confirmation_key\"));",
+                  "pm.request.headers.upsert({key: \"Idempotency-Key\", value: pm.collectionVariables.get(\"confirmation_key\")});",
+                  "pm.request.body.update(JSON.stringify(payload));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get latest cart operation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/v1/sessions/{{session_id}}/cart/operations/{{operation_id}}",
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"session_id\")) throw new Error(\"Missing session_id: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"session_token\")) throw new Error(\"Missing session_token: run the preceding create/upload/send request first.\");",
+                  "if (!pm.collectionVariables.get(\"operation_id\")) throw new Error(\"Missing operation_id: run the preceding create/upload/send request first.\");"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 — API documentation",
+      "item": [
+        {
+          "name": "OpenAPI schema",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/openapi.json",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 — Accounts and user history",
+      "item": [
+        {
+          "name": "Register — set username, password and display_name locally",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/auth/register",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"display_name\": \"{{display_name}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200,201].includes(pm.response.code)) {",
+                  " const d = pm.response.json();",
+                  " pm.collectionVariables.set('access_token',d.access_token);",
+                  " pm.collectionVariables.set('user_id',d.user.user_id);",
+                  " pm.collectionVariables.set('session_token',d.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login — captures account token",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/auth/login",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200,201].includes(pm.response.code)) {",
+                  " const d = pm.response.json();",
+                  " pm.collectionVariables.set('access_token',d.access_token);",
+                  " pm.collectionVariables.set('user_id',d.user.user_id);",
+                  " pm.collectionVariables.set('session_token',d.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Current user",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/v1/auth/me",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create owned conversation — then use Chat and Attachment folders",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/sessions",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locale\": \"ru\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  " const d = pm.response.json();",
+                  " pm.collectionVariables.set('session_id',d.session_id);",
+                  " pm.collectionVariables.set('session_token',pm.collectionVariables.get('access_token'));",
+                  " [\"attachment_id\",\"attachment_status\",\"message_id\",\"message_status\",\"proposal_id\",\"proposal_version\",\"confirmation_token\",\"operation_id\",\"cart_url\",\"text_client_message_id\",\"attachment_client_message_id\",\"confirmation_key\",\"_text_signature\",\"_attachment_signature\",\"_confirmation_signature\"].forEach(k=>pm.collectionVariables.set(k,''));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List my conversations",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/v1/sessions?limit=50&offset=0",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Read selected conversation history",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/v1/sessions/{{session_id}}/messages?limit=50&offset=0",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete selected conversation — irreversible, review first",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/v1/sessions/{{session_id}}",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout — keeps server history",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/auth/logout",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 204) { ['access_token','user_id','session_token','session_id'].forEach(k=>pm.collectionVariables.set(k,'')); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

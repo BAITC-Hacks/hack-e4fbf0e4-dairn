@@ -1,0 +1,8 @@
+.venv/
+.env
+.env.*
+!.env.example
+build/
+dist/
+
+data/
