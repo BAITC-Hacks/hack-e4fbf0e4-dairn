@@ -60,6 +60,144 @@ live-клиента не подтверждает выполненную жив�
 Поиск подстроки в sku и name без учёта регистра (Locale.ROOT); точное совпадение SKU
 идёт первым, остальные сохраняют порядок источника. Никакого внешнего search endpoint нет.
 
+## Примеры JSON ответов
+
+Примеры ниже иллюстрируют текущий контракт. Товары, цены и время загрузки условные;
+это не результаты запросов к развёрнутому сервису и не подтверждённые данные EKT.
+Успешные ответы имеют HTTP 200 и `Content-Type: application/json`.
+
+### Один товар
+
+Запрос: `GET /api/catalog/products/1001`.
+Поле `product` содержит один объект, `metadata` описывает загруженную выборку источника.
+
+```json
+{
+  "product": {
+    "id": "1001",
+    "sku": "CABLE-001",
+    "name": "Кабель ВВГнг 3×2.5",
+    "price": {
+      "amount": "850",
+      "currency": null
+    },
+    "images": [],
+    "pageUrl": null,
+    "availability": {
+      "status": "UNKNOWN",
+      "quantity": null
+    }
+  },
+  "metadata": {
+    "source": "EKT_PRODUCT_LIST",
+    "mode": "SNAPSHOT",
+    "coverage": "PARTIAL",
+    "pages": [1],
+    "loadedProducts": 20,
+    "totalProducts": null,
+    "observedAt": null,
+    "loadedAt": "2026-09-23T10:24:00Z",
+    "expiresAt": null,
+    "freshness": "UNKNOWN",
+    "detailLevel": "LIST_SUMMARY"
+  }
+}
+```
+
+### Список товаров
+
+Запрос: `GET /api/catalog/products?query=кабель`.
+Поле `items` содержит массив объектов того же формата, что и `product` выше.
+`metadata` передаётся один раз для всего результата, а не внутри каждого товара.
+
+```json
+{
+  "items": [
+    {
+      "id": "1001",
+      "sku": "CABLE-001",
+      "name": "Кабель ВВГнг 3×2.5",
+      "price": {
+        "amount": "850",
+        "currency": null
+      },
+      "images": [],
+      "pageUrl": null,
+      "availability": {
+        "status": "UNKNOWN",
+        "quantity": null
+      }
+    },
+    {
+      "id": "1002",
+      "sku": "CABLE-002",
+      "name": "Кабель ВВГнг 3×1.5",
+      "price": null,
+      "images": [],
+      "pageUrl": null,
+      "availability": {
+        "status": "UNKNOWN",
+        "quantity": null
+      }
+    }
+  ],
+  "metadata": {
+    "source": "EKT_PRODUCT_LIST",
+    "mode": "SNAPSHOT",
+    "coverage": "PARTIAL",
+    "pages": [1],
+    "loadedProducts": 20,
+    "totalProducts": null,
+    "observedAt": null,
+    "loadedAt": "2026-09-23T10:24:00Z",
+    "expiresAt": null,
+    "freshness": "UNKNOWN",
+    "detailLevel": "LIST_SUMMARY"
+  }
+}
+```
+
+`items.length` — количество совпадений, здесь 2. `metadata.loadedProducts` — число
+загруженных товаров **до фильтрации**, здесь 20; это не число совпадений и не размер
+полного каталога. Поиск сейчас ограничен загруженной первой страницей.
+
+### Пустой результат поиска
+
+Если источник успешно прочитан, но совпадений нет, возвращается HTTP 200 с `items: []`.
+Это не доказывает отсутствие товара во всём каталоге EKT.
+
+```json
+{
+  "items": [],
+  "metadata": {
+    "source": "EKT_PRODUCT_LIST",
+    "mode": "SNAPSHOT",
+    "coverage": "PARTIAL",
+    "pages": [1],
+    "loadedProducts": 20,
+    "totalProducts": null,
+    "observedAt": null,
+    "loadedAt": "2026-09-23T10:24:00Z",
+    "expiresAt": null,
+    "freshness": "UNKNOWN",
+    "detailLevel": "LIST_SUMMARY"
+  }
+}
+```
+
+При сбое источника возвращается [ошибка](#ошибки), а не успешный пустой список.
+При отсутствии запрошенного `id` в выборке карточка возвращает HTTP 404
+с `PRODUCT_NOT_IN_LOADED_SAMPLE`, а не `product: null`.
+
+### Как читать отсутствующие значения
+
+- `price: null` — цена отсутствует; это не нулевая стоимость.
+- `price.amount` — десятичная строка, а не JSON-число.
+- `currency: null` — валюта не подтверждена; нельзя автоматически подставлять KZT.
+- `availability.status: "UNKNOWN"` и `quantity: null` — наличие неизвестно, а не «нет на складе».
+- `images: []` — нет доступных нормализованных ссылок на изображения.
+- `pageUrl: null` — ссылка на страницу товара отсутствует.
+
 ## Product и пропуски
 
 | Поле | Значение |
