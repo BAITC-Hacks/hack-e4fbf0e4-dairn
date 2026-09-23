@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Interactive launcher only; all API requests are made by the existing Kotlin CLI.
+set +x
+set +v
+set -euo pipefail
+
+ekt_script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ekt_binary="$ekt_script_dir/../build/install/catalog-service/bin/catalog-service"
+if [[ ! -x "$ekt_binary" ]]; then
+    printf '%s\n' 'Build the CLI first from the repository root: gradle --quiet :catalog-service:installDist' >&2
+    exit 2
+fi
+
+# Help and unsupported commands must not request credentials.
+case "${1:-}" in
+    list|detail) ;;
+    *) exec "$ekt_binary" "$@" ;;
+esac
+
+export EKT_API_BASE_URL="${EKT_API_BASE_URL:-https://ekt.kz}"
+if [[ -z "${EKT_API_USERNAME:-}" || -z "${EKT_API_PASSWORD:-}" ]]; then
+    if ! { exec 3<>/dev/tty; } 2>/dev/null; then
+        printf '%s\n' 'No interactive terminal. Set EKT_API_USERNAME and EKT_API_PASSWORD in the environment; do not pass credentials as arguments.' >&2
+        exit 2
+    fi
+    printf '%s\n' 'EKT credentials (default origin https://ekt.kz; EKT_API_BASE_URL overrides it).' >&3
+    if [[ -z "${EKT_API_USERNAME:-}" ]]; then
+        printf 'EKT login: ' >&3
+        if ! IFS= read -r EKT_API_USERNAME <&3; then
+            printf '\nLogin input cancelled.\n' >&3
+            exit 2
+        fi
+    fi
+    if [[ -z "${EKT_API_PASSWORD:-}" ]]; then
+        printf 'EKT password (hidden): ' >&3
+        if ! IFS= read -r -s EKT_API_PASSWORD <&3; then
+            printf '\nPassword input cancelled.\n' >&3
+            exit 2
+        fi
+        printf '\n' >&3
+    fi
+    exec 3>&-
+fi
+
+export EKT_API_USERNAME EKT_API_PASSWORD
+exec "$ekt_binary" "$@"

@@ -1,0 +1,8 @@
+{
+  "wellFormed": {"name": "Test cable", "price": "120.00", "stock": 5, "specs": {"voltage": "220 V"}},
+  "missingOptional": {"name": "Test cable", "stock": 2},
+  "unknownStock": {"name": "Test cable", "stock": null},
+  "inconsistentCharacteristics": {"name": "Test cable", "specs": [{"key": "voltage", "value": "220 V"}, "cross-section: 2.5"]},
+  "ambiguousUnit": {"name": "Test cable", "specs": {"length": "10"}},
+  "incomplete": {}
+}

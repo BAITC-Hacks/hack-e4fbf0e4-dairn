@@ -6,3 +6,5 @@
 .env.*
 !.env.example
 catalog-service/local-evidence/
+/catalog-service/bin/*
+!/catalog-service/bin/ekt-cli
