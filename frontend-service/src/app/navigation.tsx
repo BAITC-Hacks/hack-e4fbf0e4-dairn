@@ -44,7 +44,9 @@ export function AppLink({
         );
         window.dispatchEvent(new PopStateEvent('popstate'));
         if (url.hash)
-          document.getElementById(url.hash.slice(1))?.scrollIntoView();
+          requestAnimationFrame(() =>
+            document.getElementById(url.hash.slice(1))?.scrollIntoView(),
+          );
         else window.scrollTo(0, 0);
       }}
     >

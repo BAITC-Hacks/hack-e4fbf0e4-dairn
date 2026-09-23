@@ -47,6 +47,7 @@ interface MockOptions {
   expireMessage?: boolean;
   guestForbidden?: boolean;
   emptyHistory?: boolean;
+  expiredHistoryFiles?: boolean;
   catalogProducts?: Product[];
 }
 async function mockIntegration(page: Page, options: MockOptions = {}) {
@@ -62,6 +63,12 @@ async function mockIntegration(page: Page, options: MockOptions = {}) {
     : Array.from({ length: options.pagination ? 51 : 1 }, (_, i) =>
         conversation(`account-${String(i).padStart(3, '0')}`),
       );
+  if (options.expiredHistoryFiles)
+    sessions = sessions.map((session) => ({
+      ...session,
+      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+      expires_at: new Date(Date.now() + 28 * 86400000).toISOString(),
+    }));
   const submitted = new Map<string, Message[]>();
   let created = 0;
   await page.route('**/v1/**', async (route) => {
@@ -166,7 +173,22 @@ async function mockIntegration(page: Page, options: MockOptions = {}) {
         blocks_count: 1,
       });
     }
+    if (options.expiredHistoryFiles && path.includes('/attachments/expired-'))
+      return json(
+        { code: 'attachment_expired', message: 'Attachment expired' },
+        410,
+      );
     if (path.endsWith('/messages') && method === 'GET') {
+      if (options.expiredHistoryFiles && sessionId === 'account-000')
+        return json(
+          Array.from({ length: 2 }, (_, turn) => ({
+            ...message(`expired-files-${turn}`, sessionId),
+            attachment_ids: Array.from(
+              { length: 10 },
+              (_, file) => `expired-${turn * 10 + file}`,
+            ),
+          })),
+        );
       if (options.pagination && sessionId === 'account-000') {
         const offset = Number(url.searchParams.get('offset') || 0);
         return json(
@@ -449,6 +471,52 @@ test('expired account credentials clear signed-in UI without replaying a message
     ),
   ).toHaveLength(1);
   await expectNoAccountInStorage(page);
+});
+
+test('expired attachments in 30-day account history do not prevent a fresh upload', async ({
+  page,
+}) => {
+  const mock = await mockIntegration(page, { expiredHistoryFiles: true });
+  await page.goto('/');
+  await login(page);
+  await expect(
+    page.getByText(
+      'Часть файлов из истории больше недоступна. При необходимости прикрепите их заново.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  expect(
+    mock.records.filter(
+      (r) => r.method === 'GET' && r.path.includes('/attachments/expired-'),
+    ),
+  ).toHaveLength(20);
+  await expect(page.locator('.exchange')).toHaveCount(2);
+  await page.getByLabel('Прикрепить файлы').setInputFiles({
+    name: 'spec.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4 mock'),
+  });
+  await expect
+    .poll(
+      () =>
+        mock.records.filter(
+          (r) => r.method === 'POST' && r.path.endsWith('/attachments'),
+        ).length,
+    )
+    .toBe(1);
+  await page
+    .getByRole('button', { name: 'Отправить сообщение', exact: true })
+    .click();
+  await expect(page.locator('.exchange')).toHaveCount(3);
+  const sent = mock.records.find(
+    (r) => r.method === 'POST' && r.path.endsWith('/messages'),
+  );
+  expect((sent?.body as MessageBody).attachment_ids).toEqual(['file-a']);
+  await expect(
+    page.getByText('Лимит: 10 файлов в сообщении и 20 в сессии.', {
+      exact: true,
+    }),
+  ).toHaveCount(0);
 });
 
 const metadata: CatalogMetadata = {

@@ -125,9 +125,9 @@ function SessionApp() {
           className="site-container site-nav"
           aria-label={t('Основная навигация')}
         >
-          <a className="catalog-link" href="/#catalog">
+          <AppLink className="catalog-link" href="/#catalog">
             <Icon name="menu" size={19} /> {t('Каталог продукции')}
-          </a>
+          </AppLink>
           <a href="https://ekt.kz" target="_blank" rel="noreferrer">
             {t('О компании')}
           </a>
